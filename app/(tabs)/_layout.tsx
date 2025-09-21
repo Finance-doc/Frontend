@@ -9,6 +9,7 @@ const ICON_STATS = require('../../assets/images/bott_stats.png');
 const ICON_STATS_FOCUSED = require('../../assets/images/bott_stats_choose.png');
 const ICON_CONTENT = require('../../assets/images/bott_content.png');
 const ICON_CHAT = require('../../assets/images/bott_chat.png');
+const ICON_CHAT_FOCUSED = require('../../assets/images/bott_chat_choose.png');
 
 export default function TabsLayout() {
   return (
@@ -57,7 +58,7 @@ export default function TabsLayout() {
         options={{
           tabBarIcon: ({ focused }) => (
             <Image
-              source={ICON_CHAT}
+              source={focused ? ICON_CHAT_FOCUSED : ICON_CHAT}
               style={{ width: 35, height: 35, resizeMode: 'contain' }}
             />
           ),
