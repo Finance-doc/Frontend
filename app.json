@@ -4,7 +4,7 @@
     "slug": "finance-doc",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/ic_thumbnail.png",
     "scheme": "financedoc",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
@@ -39,7 +39,15 @@
           }
         }
       ],
-      "expo-font"
+      "expo-font",
+      [
+        "@react-native-seoul/kakao-login",
+        {
+          "kakaoAppKey": "4280e315e140b4f5b99bdae681156013",
+          "kakaoLoginScheme": "financedoc"
+        }
+      ],
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true,

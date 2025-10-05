@@ -8,7 +8,9 @@ const ICON_HOME_FOCUSED = require('../../assets/images/bott_home_choose.png');
 const ICON_STATS = require('../../assets/images/bott_stats.png');
 const ICON_STATS_FOCUSED = require('../../assets/images/bott_stats_choose.png');
 const ICON_CONTENT = require('../../assets/images/bott_content.png');
+const ICON_CONTENT_FOCUSED = require('../../assets/images/bott_content_choose.png');
 const ICON_CHAT = require('../../assets/images/bott_chat.png');
+const ICON_CHAT_FOCUSED = require('../../assets/images/bott_chat_choose.png');
 
 export default function TabsLayout() {
   return (
@@ -17,6 +19,9 @@ export default function TabsLayout() {
         headerShown: true, 
         header: () => <Header />, 
         tabBarShowLabel: false, 
+        tabBarStyle: {
+          
+        }
       }}
     >
       <Tabs.Screen
@@ -28,6 +33,11 @@ export default function TabsLayout() {
               style={{ width: 35, height: 35, resizeMode: 'contain' }}
             />
           ),
+          tabBarStyle: {
+            borderBottomWidth: 5,
+            borderBottomColor: 'black',  
+
+          },
         }}
       />
       <Tabs.Screen
@@ -46,7 +56,7 @@ export default function TabsLayout() {
         options={{
           tabBarIcon: ({ focused }) => (
             <Image
-              source={ICON_CONTENT}
+              source={focused ? ICON_CONTENT_FOCUSED : ICON_CONTENT}
               style={{ width: 35, height: 35, resizeMode: 'contain' }}
             />
           ),
@@ -57,7 +67,7 @@ export default function TabsLayout() {
         options={{
           tabBarIcon: ({ focused }) => (
             <Image
-              source={ICON_CHAT}
+              source={focused ? ICON_CHAT_FOCUSED : ICON_CHAT}
               style={{ width: 35, height: 35, resizeMode: 'contain' }}
             />
           ),

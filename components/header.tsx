@@ -25,6 +25,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
     justifyContent: 'center',
     borderBottomWidth: StyleSheet.hairlineWidth,
+    backgroundColor: Colors.white
   },
   profileBtn: {
     width: 36,
