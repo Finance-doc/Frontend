@@ -6,7 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 export default function Content() {
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
-      <Text style={styles.title}>파이낸스닥 content</Text>
+      <Text style={styles.title}>파이낸스닥 contenㅋt</Text>
     </SafeAreaView>
   );
 }

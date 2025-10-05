@@ -1,67 +1,12 @@
+import GroupBarChart from '@/app/GroupBarChart';
 import { Colors } from '@/constants/colors';
 import React, { useState } from 'react';
 import { Dimensions, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { BarChart, LineChart } from 'react-native-chart-kit';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Circle } from 'react-native-svg';
+import { Grid, LineChart, XAxis } from 'react-native-svg-charts';
 
 const screenWidth = Dimensions.get('window').width;
-
-const data = {
-  labels: ["지출", "저축"],
-  datasets: [
-    {
-      data: [100, 5], // 실제 금액
-      color: () => 'rgb(164, 165, 255)', // 실제 금액 색상
-      strokeWidth: 2,
-    },
-    {
-      data: [80, 15], // 목표 금액 (목표 지출액, 목표 저축액)
-      color: () => 'rgba(125, 216, 255, 1)', // 목표 금액 색상 (하늘색)
-      strokeWidth: 2,
-      withDots: true, // 점선 스타일
-      dotColor: 'rgba(0, 200, 255, 1)', // 점선 색상
-      strokeDasharray: [5, 5], // 점선 스타일
-    }
-  ]
-};
-
-const chartConfig = {
-  backgroundGradientFrom: "#fff",
-  backgroundGradientTo: "#fff",
-  decimalPlaces: 0,
-  color: () => `rgb(0, 4, 255)`, 
-  barPercentage: 1.8,
-  useShadowColorFromDataset: false,
-  labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
-};
-
-const GoalChat = () => (
-  <View style={styles.monthgoal}>
-    <BarChart
-      data={data}
-      width={screenWidth}
-      height={220}
-      yAxisLabel=""
-      chartConfig={chartConfig}
-      verticalLabelRotation={0}
-      fromZero={true}
-      showBarTops={false}
-      withInnerLines={false}
-      showValuesOnTopOfBars={false}
-      yAxisSuffix="" 
-      withVerticalLabels={true} 
-    />
-    <View style={{
-      position: 'absolute',
-      bottom: 38,
-      left: 0,
-      width: 280,
-      height: 3, 
-      marginStart: 65,
-      backgroundColor: 'rgba(238, 238, 238,1)'
-    }} />
-  </View>
-);
 
 const getLastSixMonths = () => {
   const months = [];
@@ -77,45 +22,62 @@ const getLastSixMonths = () => {
   return months.reverse(); 
 };
 
-const lineData = {
-  labels: getLastSixMonths(), // 동적으로 생성된 6개월 전의 월
-  datasets: [
-    {
-      data: [10, 20, 15, 30, 40, 50], 
-      strokeWidth: 2, // 선의 두께
-      color: () => 'rgba(255, 145, 145, 1)', 
-    }
-  ],
+interface DecoratorProps {
+    data?: number[]; // data를 선택적으로 변경
+    x?: (index: number) => number; // x를 선택적으로 변경
+    y?: (value: number) => number; // y를 선택적으로 변경
+}
+
+const Decorator: React.FC<DecoratorProps> = ({ data, x, y }) => {
+    if (!data || !x || !y) return null;
+
+    return data.map((value, index) => (
+        <Circle
+            key={index}
+            cx={x(index)}
+            cy={y(value)} 
+            r={4} 
+            stroke={'rgba(255, 145, 145, 1)'}
+            fill={'rgba(255, 145, 145, 1)'} 
+            strokeWidth={2} 
+        />
+    ));
 };
 
-const lineChartConfig = {
-  backgroundColor: "#fff", 
-  backgroundGradientFrom: "#fff", 
-  backgroundGradientTo: "#fff", 
-  fillShadowGradientFrom: "#fff",
-  fillShadowGradientTo: "#fff",
-  decimalPlaces: 0, 
-  color: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`, // 데이터 색상
-  labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`, // 레이블 색상
-  style: {
-    borderRadius: 16, // 모서리 둥글게
-  },
+const LineChartComponent = () => {
+  const data = [10, 20, 15, 30, 40, 25];
+  const labels = getLastSixMonths();
+  const xAxisInset = { left: 20, right: 20 };
+
+  return (
+    <View style={{ flexDirection: 'row', padding: 10 }}>
+      <View style={{ flex: 1, marginLeft: 15, marginRight: 15 }}>
+        {/* 라인 차트 */}
+        <LineChart
+          style={{ height: 200, width: screenWidth - 60 }}
+          data={data}
+          svg={{ stroke: 'rgba(255, 145, 145, 1)', strokeWidth: 2 }}
+          contentInset={{ top: 20, bottom: 20, ...xAxisInset }}
+        >
+          <Grid />
+          <Decorator /> 
+        </LineChart>
+
+        <XAxis
+          style={{ marginTop: 10 }}
+          data={data}
+          formatLabel={(value, index) => labels[index]}
+          contentInset={{ left: 10, right: 10 }}
+          svg={{ fontSize: 12, fill: 'black' }}
+        />
+      </View>
+    </View>
+  );
 };
 
-const LineChartComponent = () => (
-  <View style={styles.chartContainer}>
-    <LineChart
-      data={lineData}
-      width={screenWidth}
-      height={220}
-      chartConfig={lineChartConfig}
-      verticalLabelRotation={0}
-      fromZero={true}
-      withInnerLines={false} 
-    />
-  </View>
-);
 export default function Stats() {
+  const actualValues  = [40,50]
+  const targetValues  = [100,60]
   const categories=[
     { img: require('../../assets/images/img_stats_category.png'), name: '식비', expense: 206513 },
     { img: require('../../assets/images/img_stats_category.png'), name: '식비', expense: 20651553 },
@@ -132,7 +94,6 @@ export default function Stats() {
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
       <Text style={styles.title}>재무 진단서</Text>
-
       <Text style={styles.month}>월</Text>
 
       <ScrollView contentContainerStyle={styles.scrollContainer}>
@@ -163,20 +124,20 @@ export default function Stats() {
         <Text style={styles.analysis}>이번 달에는 목표에 얼마나 가까워졌을까요?</Text>
 
         <View style={styles.monthgoal}>
-          <GoalChat /> 
+          <GroupBarChart  actualValues={actualValues} targetValues={targetValues} />
           <View style={styles.goalname}>
             <Image
             source={require('../../assets/images/img_circle_blue.png')}
-            style={{width: 13, height:13, top: -50, left: -165}}
+            style={{width: 13, height:13, top: -2, left: -165}}
             />
-            <Text style={{ fontSize: 15, color: Colors.mint, fontWeight: 'bold',top: -63, left: -145}}>
+            <Text style={{ fontSize: 15, color: Colors.mint, fontWeight: 'bold',top: -15, left: -145}}>
               목표금액
             </Text>
             <Image
             source={require('../../assets/images/img_circle_purple.png')}
-            style={{width: 13, height:13, top: -76, left: -85}}
+            style={{width: 13, height:13, top: -28, left: -85}}
             />
-            <Text style={{ fontSize: 15, color: Colors.purple, fontWeight: 'bold',top: -89, left: -65}}>
+            <Text style={{ fontSize: 15, color: Colors.purple, fontWeight: 'bold',top: -41, left: -65}}>
               실제금액
             </Text>
           </View>
@@ -231,7 +192,7 @@ const styles = StyleSheet.create({
   scrollContainer: { paddingBottom: 20 },
   totalExpense: {marginBottom: 50},
   month: {fontSize: 19, fontWeight: 'bold', borderBottomWidth: StyleSheet.hairlineWidth, paddingTop:10, paddingBottom: 10,},
-  analysis: {fontSize: 19, fontWeight: 'bold',paddingTop: 40, marginStart: 20},
+  analysis: {fontSize: 19, fontWeight: 'bold', paddingTop: 40, marginStart: 20, },
   expenselists: { flexDirection: 'row', alignItems: 'center', marginTop: 20, marginStart: 30, marginEnd: 30 },
   categoryDetails: { flexDirection: 'row', alignItems: 'center', },
   categoryItem: { width: '53%'},
@@ -241,7 +202,6 @@ const styles = StyleSheet.create({
   goalname: { },
   monthgoal: { marginTop: 10, alignItems: 'center', justifyContent: 'center', marginBottom: 50},
   subanalysis: {fontSize: 15, fontWeight: '500',paddingTop: 20, marginStart: 20},
-  chartContainer: { marginTop: 20, alignItems: 'center', justifyContent: 'center', position: 'relative', },
   score: {alignItems: 'center',justifyContent: 'center'},
   scorebox: {width: 346, height: 58, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingRight: 20,},
   questionbox: {width: 16, height: 16, position: 'absolute', top: -20, left: 8,},
@@ -252,5 +212,5 @@ const styles = StyleSheet.create({
   scoreNumberContainer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center'},
   scoreText: { fontSize: 15, fontWeight: 'bold',left: -40},
   scoreScoreText:{ fontSize: 25, fontWeight: '800', marginRight: 15, },
-  scoreEndText: { fontSize: 15, fontWeight: 'bold', color: Colors.gray}
+  scoreEndText: { fontSize: 15, fontWeight: 'bold', color: Colors.gray},
 });
