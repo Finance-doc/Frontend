@@ -6,10 +6,16 @@
     "orientation": "portrait",
     "icon": "./assets/images/ic_thumbnail.png",
     "scheme": "financedoc",
+    "owner": "minnnj",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSAppTransportSecurity": {
+          "NSAllowsArbitraryLoads": true
+        }
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -24,6 +30,9 @@
     "web": {
       "output": "static",
       "favicon": "./assets/images/favicon.png"
+    },
+    "extra": {
+      "tunnel": "cloudflare" 
     },
     "plugins": [
       "expo-router",

@@ -1,7 +1,7 @@
 import Header from '@/components/header';
 import { Tabs } from 'expo-router';
 import React from 'react';
-import { Image } from 'react-native';
+import { Image, View } from 'react-native';
 
 const ICON_HOME = require('../../assets/images/bott_home.png');
 const ICON_HOME_FOCUSED = require('../../assets/images/bott_home_choose.png');
@@ -12,65 +12,68 @@ const ICON_CONTENT_FOCUSED = require('../../assets/images/bott_content_choose.pn
 const ICON_CHAT = require('../../assets/images/bott_chat.png');
 const ICON_CHAT_FOCUSED = require('../../assets/images/bott_chat_choose.png');
 
+const makeTabIcon =
+  (normal: any, focusedImg: any) =>
+  ({ focused }: { focused: boolean }) => (
+    <View
+      style={{
+        alignItems: 'center',
+        justifyContent: 'flex-start',
+        width: 80,    
+      }}
+    >
+      <View
+        style={{
+          height: 4,
+          width: 60,
+          borderRadius: 2,
+          backgroundColor: focused ? '#000' : 'transparent', 
+          marginBottom: 6,
+        }}
+      />
+      <Image
+        source={focused ? focusedImg : normal}
+        style={{ width: 35, height: 35, resizeMode: 'contain' }}
+      />
+    </View>
+  );
+
 export default function TabsLayout() {
   return (
     <Tabs
       screenOptions={{
-        headerShown: true, 
-        header: () => <Header />, 
-        tabBarShowLabel: false, 
+        headerShown: true,
+        header: () => <Header />,
+        tabBarShowLabel: false,
         tabBarStyle: {
-          
-        }
+          height: 80,     
+          paddingTop: 1,
+          borderTopColor: 'transparent',
+        },
       }}
     >
       <Tabs.Screen
         name="home"
         options={{
-          tabBarIcon: ({ focused }) => (
-            <Image
-              source={focused ? ICON_HOME_FOCUSED : ICON_HOME}
-              style={{ width: 35, height: 35, resizeMode: 'contain' }}
-            />
-          ),
-          tabBarStyle: {
-            borderBottomWidth: 5,
-            borderBottomColor: 'black',  
-
-          },
+          tabBarIcon: makeTabIcon(ICON_HOME, ICON_HOME_FOCUSED),
         }}
       />
       <Tabs.Screen
         name="stats"
         options={{
-          tabBarIcon: ({ focused }) => (
-            <Image
-              source={focused ? ICON_STATS_FOCUSED : ICON_STATS}
-              style={{ width: 35, height: 35, resizeMode: 'contain' }}
-            />
-          ),
+          tabBarIcon: makeTabIcon(ICON_STATS, ICON_STATS_FOCUSED),
         }}
       />
       <Tabs.Screen
         name="content"
         options={{
-          tabBarIcon: ({ focused }) => (
-            <Image
-              source={focused ? ICON_CONTENT_FOCUSED : ICON_CONTENT}
-              style={{ width: 35, height: 35, resizeMode: 'contain' }}
-            />
-          ),
+          tabBarIcon: makeTabIcon(ICON_CONTENT, ICON_CONTENT_FOCUSED),
         }}
       />
       <Tabs.Screen
         name="chat"
         options={{
-          tabBarIcon: ({ focused }) => (
-            <Image
-              source={focused ? ICON_CHAT_FOCUSED : ICON_CHAT}
-              style={{ width: 35, height: 35, resizeMode: 'contain' }}
-            />
-          ),
+          tabBarIcon: makeTabIcon(ICON_CHAT, ICON_CHAT_FOCUSED),
         }}
       />
     </Tabs>
