@@ -6,7 +6,7 @@
     "orientation": "portrait",
     "icon": "./assets/images/ic_thumbnail.png",
     "scheme": "financedoc",
-    "owner": "minnnj",
+    "owner": "yeminhae",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
@@ -15,7 +15,8 @@
         "NSAppTransportSecurity": {
           "NSAllowsArbitraryLoads": true
         }
-      }
+      },
+      "bundleIdentifier": "com.yeminhae.financedoc"
     },
     "android": {
       "adaptiveIcon": {
@@ -25,14 +26,19 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.yeminhae.financedoc"
     },
     "web": {
       "output": "static",
       "favicon": "./assets/images/favicon.png"
     },
     "extra": {
-      "tunnel": "cloudflare" 
+      "tunnel": "cloudflare",
+      "router": {},
+      "eas": {
+        "projectId": "90a0c1bd-b59f-4a18-929d-5dc75cd7cb69"
+      }
     },
     "plugins": [
       "expo-router",
@@ -49,18 +55,17 @@
         }
       ],
       "expo-font",
-      [
-        "@react-native-seoul/kakao-login",
-        {
-          "kakaoAppKey": "4280e315e140b4f5b99bdae681156013",
-          "kakaoLoginScheme": "financedoc"
-        }
-      ],
       "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/90a0c1bd-b59f-4a18-929d-5dc75cd7cb69"
     }
   }
 }
