@@ -6,21 +6,12 @@
     "orientation": "portrait",
     "icon": "./assets/images/ic_thumbnail.png",
     "scheme": "financedoc",
-    "owner": "minnnj",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true,
-      "infoPlist": {
-        "NSAppTransportSecurity": {
-          "NSAllowsArbitraryLoads": true
-        },
-        "ITSAppUsesNonExemptEncryption": false
-      },
-      "bundleIdentifier": "com.yourcompany.financedoc"
+      "supportsTablet": true
     },
     "android": {
-      "kotlinCompilerVersion": "2.2.0",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -28,19 +19,11 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false,
-      "package": "com.yourcompany.financedoc"
+      "predictiveBackGestureEnabled": false
     },
     "web": {
       "output": "static",
       "favicon": "./assets/images/favicon.png"
-    },
-    "extra": {
-      "tunnel": "cloudflare",
-      "router": {},
-      "eas": {
-        "projectId": "26b97dd0-5ae0-4ad0-801f-7749727ecf03"
-      }
     },
     "plugins": [
       "expo-router",

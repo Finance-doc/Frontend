@@ -7,10 +7,7 @@ import React, { useEffect, } from 'react';
 import { Image, ImageBackground, StyleSheet, Text, TouchableOpacity, View, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-const redirectUri = AuthSession.makeRedirectUri({
-  scheme: "financedoc", 
-});
-
+const redirectUri = AuthSession.makeRedirectUri({ useProxy: true, } as any);
 console.log("등록해야 할 Redirect URI:", redirectUri);
 
 
@@ -18,7 +15,6 @@ const KAKAO_CLIENT_ID = 'ecaeda093cbe23fb23a3a1abfc3e1512';
 
 const IMG_ICON = require('../assets/images/img_icon.png');
 const IC_KAKAO = require('../assets/images/ic_kakao.png');
-const IC_GOOGLE = require('../assets/images/ic_google.png');
 const IMG_BOX_YELLOW = require('../assets/images/img_box_yellow.png');
 const IMG_BOX_WHITE = require('../assets/images/img_box_white.png');
 
@@ -105,17 +101,12 @@ useEffect(() => {
         </ImageBackground>
       </TouchableOpacity>
 
-        {/* 구글 시작하기 */}
-        <TouchableOpacity activeOpacity={0.9} onPress={() => {router.replace('/home');}}>
-          <ImageBackground
-            source={IMG_BOX_WHITE}
-            style={[styles.btnBg, { width: btnWidth, alignSelf: 'center' }]}
-            imageStyle={[styles.btnBgImage, { borderRadius: 25 }]}
-          >
-            <Image source={IC_GOOGLE} style={styles.leftIcon} />
-            <Text style={styles.googleText}>구글로 시작하기</Text>
-            <View style={{ width: 24 }} />
-          </ImageBackground>
+      <TouchableOpacity 
+        activeOpacity={0.9} 
+        onPress={() => router.replace('/(tabs)/home')}
+        style={[styles.startBtn, { width: btnWidth, alignSelf: 'center' }]} 
+      >
+      <Text style={styles.startText}>시작하기</Text> 
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -146,4 +137,17 @@ const styles = StyleSheet.create({
   leftIcon: { width: 28, height: 28, marginRight: 12, resizeMode: 'contain' },
   kakaoText: { flex: 1, textAlign: 'center', color: '#111', fontSize: 18, fontWeight: 'bold' },
   googleText: { flex: 1, textAlign: 'center', color: '#111', fontSize: 18, fontWeight: 'bold' },
+    startBtn: { 
+    height: 50,
+    backgroundColor: Colors.white, 
+    borderRadius: 25,
+    justifyContent: 'center',
+    alignItems: 'center',
+    display: 'flex',
+  },
+  startText: { 
+    color: Colors.black, 
+    fontSize: 18, 
+    fontWeight: 'bold',
+  },
 });
