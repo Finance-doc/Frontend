@@ -5,7 +5,7 @@ import * as AuthSession from 'expo-auth-session';
 import { useAuthRequest } from "expo-auth-session";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import React, { useEffect } from "react";
+import { useEffect } from "react";
 import {
   Image,
   ImageBackground,

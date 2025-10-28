@@ -15,10 +15,10 @@
         "NSAppTransportSecurity": {
           "NSAllowsArbitraryLoads": true
         }
-      },
-      "bundleIdentifier": "com.yeminhae.financedoc"
+      }
     },
     "android": {
+      "package": "com.financedoc",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -27,7 +27,6 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.yeminhae.financedoc"
     },
     "web": {
       "output": "static",
