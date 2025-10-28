@@ -8,9 +8,11 @@ import { Image, ImageBackground, StyleSheet, Text, TouchableOpacity, View, useWi
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 const redirectUri = AuthSession.makeRedirectUri({
-  useProxy: true,
-} as any);
-console.log('등록해야 할 Redirect URI:', redirectUri); 
+  scheme: "financedoc", 
+});
+
+console.log("등록해야 할 Redirect URI:", redirectUri);
+
 
 const KAKAO_CLIENT_ID = 'ecaeda093cbe23fb23a3a1abfc3e1512'; 
 
@@ -42,17 +44,13 @@ const { width, height } = useWindowDimensions();
   );
   
 const handleKakaoLogin = async () => {
-  if (request) {
-    try {
-      console.log('카카오 로그인 요청 시작');
-      const result = await promptAsync(); // 로그인 요청
-      console.log('카카오 로그인 결과:', result); // 결과 로그
-    } catch (error) {
-      console.error('로그인 에러:', error); 
-      alert('로그인 처리 중 오류가 발생했습니다.');
+  try {
+    const result = await promptAsync();
+    if (result?.type === "success") {
+      console.log("카카오 로그인 성공:", result.params.code);
     }
-  } else {
-    console.log('로그인 요청이 로드되지 않았습니다.');
+  } catch (e) {
+    console.error(e);
   }
 };
 

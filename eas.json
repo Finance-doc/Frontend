@@ -1,0 +1,23 @@
+{
+  "cli": {
+    "appVersionSource": "local" 
+  },
+  "build": {
+    "release": {
+      "android": {
+        "buildType": "app-bundle" 
+      },
+      "ios": {}
+    },
+    "development": {
+      "developmentClient": true, 
+      "distribution": "internal", 
+      "android": {
+        "buildType": "apk"
+      },
+      "ios": {
+        "simulator": true
+      }
+    }
+  }
+}
