@@ -16,6 +16,7 @@ const IMG_ARROW_LEFT_CHOSEN = require('../../assets/images/ic_arrow_left_choose.
 const IMG_ARROW_RIGHT = require('../../assets/images/ic_arrow_right.png');
 const IMG_ARROW_RIGHT_CHOSEN = require('../../assets/images/ic_arrow_right_choose.png');
 
+
 const fetchMonthlyExpense = async (year: number, month: number) => {
   try {
     const res = await fetch(`${API_BASE_URL}/report/api/summary/report?year=${year}&month=${month}`, {
@@ -27,7 +28,12 @@ const fetchMonthlyExpense = async (year: number, month: number) => {
     });
     if (res.ok) {
       const data = await res.json();
-      return data; 
+            if (Array.isArray(data.last6Months)) {
+        return data; 
+      } else {
+        console.error("last6MonthsData is not an array:", data.last6Months);
+        return null; // 배열이 아닐 경우 null 반환
+      }
     } else {
       const errorText = await res.text();
       console.error(`월 총 지출 조회 실패: ${res.status} - ${errorText}`);
@@ -58,43 +64,34 @@ const fetchGoals = async () => {
   }
   return null;
 };
-const fetchLast6Months = async (year: number, month: number) => {
-  try {
-    const res = await fetch(`${API_BASE_URL}/report/api/summary/report?year=${year}&month=${month}`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': token,
-      },
-    });
-    const data = await res.json();
-    return data.last6Months; // last6Months 반환
-  } catch (err) {
-    console.error("API 호출 중 오류 발생:", err);
-  }
-  return null;
-};
+
 const LineChartComponent = ({ year, month }: { year: number, month: number }) => {
   const [chartData, setChartData] = useState<any[]>([]); // Chart 데이터를 저장할 상태
   const [labels, setLabels] = useState<string[]>([]); // X축 레이블 (월)
 
   useEffect(() => {
-    const loadLast6MonthsData = async () => {
-      const last6MonthsData = await fetchLast6Months(year, month);
-      if (last6MonthsData !== null) {
-        const formattedData = last6MonthsData.map((item: any) => ({
-          value: item.expense, // y축 값은 expense
+const loadLast6MonthsData = async () => {
+      const expenseData = await fetchMonthlyExpense(year, month);
+      
+      if (expenseData && Array.isArray(expenseData.last6Months)) {
+        const last6Months = expenseData.last6Months; 
+        
+        const formattedData = last6Months.map((item: any) => ({
+          value: item.expense, 
         }));
         setChartData(formattedData);
-
-        // x축 레이블로 월 정보를 설정
-        const months = last6MonthsData.map((item: any) => `${item.month}월`);
+        const months = last6Months.map((item: any) => `${item.month}월`);
         setLabels(months);
+      } else {
+        console.error("6개월 데이터 배열을 찾을 수 없습니다.");
+        // 데이터가 없을 경우 차트 초기화 (선택 사항)
+        setChartData([]);
+        setLabels([]);
       }
     };
 
     loadLast6MonthsData();
-  }, [month]); // currentMonth가 변경될 때마다 호출
+  }, [year, month]);
 
   return (
     <View style={{ flexDirection: 'row', padding: 10 }}>
@@ -129,6 +126,8 @@ export default function Stats() {
       setIsVisible(false);
     }, 1500);
   };
+  const [month, setMonth] = useState<number>(10); // 현재 월 저장
+  const [year, setYear] = useState<number>(2025);
 
   const [isVisible, setIsVisible] = useState(false);
   
@@ -137,8 +136,7 @@ export default function Stats() {
 
   const [categories, setCategories] = useState<any[]>([]); // 카테고리별 지출 저장
   const [totalExpense, setTotalExpense] = useState<number | null>(null); // 월 총 지출 저장
-  const [month, setCurrentMonth] = useState<number>(10); // 현재 월 저장
-  const [year, setYear] = useState<number>(2025);
+
   const [financialScore, setFinancialScore] = useState<number | null>(null); // 금융 점수 저장
 
   const [chartData, setChartData] = useState<any[]>([]); // Chart 데이터를 저장할 상태
@@ -153,29 +151,42 @@ const handlePreviousMonth = () => {
     setTimeout(() => setLeftArrowPressed(false), 200);
 
     if (month === 1) {
-        setYear(prevYear => prevYear - 1); 
-    } 
+        setMonth(12);
+        setYear((prevYear: number) => prevYear - 1);
+    } else {
+        setMonth((prevMonth: number) => prevMonth - 1);
+    }
 };
 const handleNextMonth = () => {
     setRightArrowPressed(true);
     setTimeout(() => setRightArrowPressed(false), 200);
 
     if (month === 12) {
-        setYear(prevYear => prevYear + 1);
+        setMonth(1);
+        setYear((prevYear: number) => prevYear + 1);
+    } else {
+        setMonth((prevMonth: number) => prevMonth + 1);
     }
 };
-
-  useEffect(() => {
-    const loadMonthlyExpense = async () => {
-      const expenseData = await fetchMonthlyExpense(year, month);
-      if (expenseData !== null) {
-        setTotalExpense(expenseData.totalExpense); // 총 지출 값 저장
-        setCategories(expenseData.categoryExpenses); // 카테고리별 지출 값 저장
-        setFinancialScore(expenseData.financialScore); // 금융 점수 저장
-      }
+useEffect(() => {
+    const loadMonthlyData = async () => {
+        const data = await fetchMonthlyExpense(year, month);
+        
+        if (data !== null) {
+            setTotalExpense(data.totalExpense); 
+            setCategories(data.categoryExpenses); 
+            setFinancialScore(data.financialScore);
+            setActualValues([data.totalExpense, data.totalIncome]);
+            setChartData(data.last6Months.map((item: any) => ({
+                value: item.expense,
+                label: `${item.month}월`,
+            })));
+            
+        }
     };
-    loadMonthlyExpense();
-  }, [year, month]); 
+
+    loadMonthlyData();
+}, [year, month]); // [year, month] 변경 시 모든 월별 데이터 갱신
 
   useEffect(() => {
     const loadGoals = async () => {
@@ -196,22 +207,6 @@ const handleNextMonth = () => {
     };
     loadActual();
   }, []); 
-
-  useEffect(() => {
-    const loadLast6MonthsData = async () => {
-      const last6MonthsData = await fetchLast6Months(year, month);
-      if (last6MonthsData !== null) {
-        // 데이터를 chartData에 적절히 포맷하여 저장
-        const formattedData = last6MonthsData.map((item: any) => ({
-          value: item.expense,
-          label: `${item.month}월`, // x축 레이블로 월을 설정
-        }));
-        setChartData(formattedData);
-      }
-    };
-
-    loadLast6MonthsData();
-  }, [month]);
   
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
