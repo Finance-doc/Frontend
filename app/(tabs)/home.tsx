@@ -2,15 +2,17 @@ import DayCell from '@/components/DayCell';
 import { Colors } from '@/constants/colors';
 import * as d3 from "d3-shape";
 import { useRouter } from 'expo-router';
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, Dimensions, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Calendar, LocaleConfig } from 'react-native-calendars';
-import { PieChart } from 'react-native-chart-kit';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { G, Line, Path, Text as SvgText } from "react-native-svg";
 
+const API_BASE_URL = 'http://ing-default-financedocin-b81cf-108864784-1b9b414f3253.kr.lb.naverncp.com';
+const token =
+    "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJIeWVyaW0ga2ltIiwic3ViIjoiMSIsImlhdCI6MTc2MDc2NjU4NCwiZXhwIjoxNzYxOTc2MTg0fQ.jpDSg5pGzaPgDQPqBjbK_oqfWvwpMf3wkaGpMGMHez4";
+
 const screenWidth = Dimensions.get('window').width;
-const IMG_CIRCLE = require('../../assets/images/img_circle_blue.png');
 LocaleConfig.locales['ko'] = {
   monthNames: [
     '1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'
@@ -24,100 +26,287 @@ LocaleConfig.locales['ko'] = {
 };
 LocaleConfig.defaultLocale = 'ko';
 const today = new Date().toISOString().split('T')[0];
-
-const piedata = [
-  {
-    "name": "python",
-    "value": 149,
-    "color": "hsl(190, 70%, 50%)"
-  },
-  {
-    "name": "erlang",
-    "value": 157,
-    "color": "hsl(169, 70%, 50%)"
-  },
-  {
-    "name": "java",
-    "value": 306,
-    "color": "hsl(138, 70%, 50%)"
-  },
-  {
-    "name": "lisp",
-    "value": 87,
-    "color": "hsl(3, 70%, 50%)"
-  },
-
-];
-
-const sampleData = [
-  { id: '1', percent: '20%', name: '식비', amount: '10,000원' },
-  { id: '2', percent: '30%', name: '문화생활', amount: '15,000원' },
-  { id: '3', percent: '50%', name: '생활용품크크', amount: '250,000원' },
-];
-
-const dayLedger: Ledger = {       
-  '2025-10-08': { income: 620145, expense: 250000 },
-  '2025-10-15': { income: 0, expense: 123000 },
-};
 type Ledger = Record<string, { income?: number; expense?: number }>;
-
-const ListItem = ({ percent, name, amount }: { percent: string; name: string; amount: string }) => (
-  <View style={styles.listItem}>
-    <Image source={IMG_CIRCLE} style={styles.circle} />
-    <Text style={styles.percent}>{percent}</Text>
-    <Text style={styles.name}>{name}</Text>
-    <Text style={styles.amount}>{amount}</Text>
-  </View>
-);
-
-const sortedPiedata = piedata.sort((a, b) => b.value - a.value);  // value 기준 내림차순 정렬
-
-const pieChartConfig = {
-  backgroundColor: 'transparent',
-  backgroundGradientFrom: '#fff',
-  backgroundGradientTo: '#fff',
-  labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
-  color: (opacity = 1) => `rgba(164, 165, 255, ${opacity})`, // 기본 색상 정의
-  style: {
-    borderRadius: 16,
-  },
+const fetchExpenseData = async (date: string): Promise<{ date: string, expense: number }> => {
+  try {
+    const res = await fetch(
+      `${API_BASE_URL}/report/api/expense?date=${date}`,
+      {
+        headers: {
+          Authorization: token,
+        },
+      }
+    );
+    const data = await res.json();
+    const totalExpense = data?.totalExpense || 0;
+    return { date: date, expense: totalExpense };
+  } catch (err) {
+    console.error(`[${date}] 지출 데이터 가져오기 실패:`, err);
+    return { date: date, expense: 0 };
+  }
+};
+const fetchIncomeData = async (date: string): Promise<{ date: string, income: number }> => {
+  try {
+    const res = await fetch(
+      `${API_BASE_URL}/report/api/income?date=${date}`,
+      {
+        headers: {
+          Authorization: token,
+        },
+      }
+    );
+    const data = await res.json();
+    const totalIncome = data?.totalIncome || 0;
+    return { date: date, income: totalIncome };
+  } catch (err) {
+    console.error(`[${date}] 수입 데이터 가져오기 실패:`, err);
+    return { date: date, income: 0 };
+  }
 };
 
-type PieChartComponentProps = {
-  data: { name: string; value: number; color: string }[];
-  activeId: string | null;
+const getDaysInMonth = (dateString: string): string[] => {
+    const [year, month] = dateString.split('-').map(Number);
+    const date = new Date(year, month - 1, 1);
+    const days: string[] = [];
+    while (date.getMonth() === month - 1) {
+        const dayString = new Date(date).toISOString().substring(0, 10);
+        days.push(dayString);
+        date.setDate(date.getDate() + 1);
+    }
+    return days;
 };
 
-export const PieChartComponent = ({ data, activeId }: PieChartComponentProps) => {
-  // activeId를 반영해서 data 가공
-  const chartData = sortedPiedata.map((d) => ({
-    name: d.name,
-    population: d.value,
-    color: d.color,
-    legendFontColor: "#543131ff",
-    legendFontSize: 12,
-  }));
+const fetchGoals = async () => {
+  try {
+    const res = await fetch(`${API_BASE_URL}/report/api/goal`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': token,
+      },
+    });
+    if (res.ok) {
+      const data = await res.json();
+      return data; 
+    } else {
+      const errorText = await res.text();
+      console.error(`목표 금액 조회 실패: ${res.status} - ${errorText}`);
+    }
+  } catch (err) {
+    console.error("목표 금액 API 호출 중 오류 발생:", err);
+  }
+  return null;
+};
+const applyIncomeGoal = async (
+  savingInput: string,
+  setSavingsSaves: (n: number) => void
+) => {
+  const cleanInput = (savingInput || '0').replace(/,/g, ''); // 쉼표 제거
+  const goalAmount = Number(cleanInput);
+
+  if (isNaN(goalAmount)) {
+    console.warn("저축 목표 금액이 유효한 숫자가 아닙니다.");
+    return;
+  }
+
+  try {
+    const res = await fetch(`${API_BASE_URL}/report/api/goal`, {
+      method: 'POST', // 목표 금액 저장 (또는 수정)
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': token,
+      },
+      body: JSON.stringify({
+        incomeGoal: goalAmount, // incomeGoal만 전송
+      }),
+    });
+
+    if (res.ok) {
+      console.log(`저축 목표 금액 (${goalAmount}원) 설정 성공.`);
+      setSavingsSaves(goalAmount); 
+    } else {
+      const errorText = await res.text();
+      console.error(`저축 목표 설정 실패: ${res.status} - ${errorText}`);
+    }
+  } catch (err) {
+    console.error("저축 목표 API 호출 중 네트워크 오류 발생:", err);
+  }
+};
+
+const applyExpenseGoal = async (
+  expenseInput: string,
+  setExpenseSaves: (n: number) => void
+) => {
+  const cleanInput = (expenseInput || '0').replace(/,/g, ''); // 쉼표 제거
+  const goalAmount = Number(cleanInput);
+
+  if (isNaN(goalAmount)) {
+    console.warn("지출 목표 금액이 유효한 숫자가 아닙니다.");
+    return;
+  }
+
+  try {
+    const res = await fetch(`${API_BASE_URL}/report/api/goal`, {
+      method: 'POST', // 목표 금액 저장 (또는 수정)
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': token,
+      },
+      body: JSON.stringify({
+        expenseGoal: goalAmount, // expenseGoal만 전송
+      }),
+    });
+
+    if (res.ok) {
+      console.log(`지출 목표 금액 (${goalAmount}원) 설정 성공.`);
+      setExpenseSaves(goalAmount); 
+    } else {
+      const errorText = await res.text();
+      console.error(`지출 목표 설정 실패: ${res.status} - ${errorText}`);
+    }
+  } catch (err) {
+    console.error("지출 목표 API 호출 중 네트워크 오류 발생:", err);
+  }
+};
+
+const fetchTotalExpense = async (year: number, month: number) => {
+  try {
+    const res = await fetch(`${API_BASE_URL}/report/api/summary/month?year=${year}&month=${month}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': token,
+      },
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      return data.totalExpense; // 총 지출 금액을 반환
+    } else {
+      const errorText = await res.text();
+      console.error(`총 지출 조회 실패: ${res.status} - ${errorText}`);
+    }
+  } catch (err) {
+    console.error("총 지출 API 호출 중 오류 발생:", err);
+  }
+  return null;
+};
+const fetchCategoryExpenses = async (year: number, month: number) => {
+  try {
+    const res = await fetch(`${API_BASE_URL}/report/api/summary/month?year=${year}&month=${month}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': token,
+      },
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      return data.categoryExpenses; // 카테고리별 지출 합계 반환
+    } else {
+      const errorText = await res.text();
+      console.error(`카테고리별 지출 조회 실패: ${res.status} - ${errorText}`);
+    }
+  } catch (err) {
+    console.error("카테고리별 지출 API 호출 중 오류 발생:", err);
+  }
+  return null; 
+};
+
+const generatedColors: Set<string> = new Set();
+
+const getRandomColor = (): string => {
+  let color: string;
+
+  // 중복되지 않는 색상 생성
+  do {
+    color = '#' + Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0');
+  } while (generatedColors.has(color)); 
+  generatedColors.add(color);
+
+  return color;
+};
+
+const PieChartComponent = ({ data }: { data: { name: string; value: number; color: string }[] }) => {
+  const outerRadius = 115;
+  const innerRadius = 40;
+
+  const pieGenerator = d3.pie<any>().value((d: any) => d.value);
+  const arcData = pieGenerator(data); 
+
+  const [activeId, setActiveId] = useState<string | null>(null); 
 
   return (
-    <View>
-      <PieChart
-        data={chartData}
-        width={screenWidth}
-        height={220}
-        accessor="population"
-        backgroundColor="transparent"
-        chartConfig={pieChartConfig}
-        paddingLeft="16"
-        hasLegend={true}
-      />
+    <View style={{ alignItems: "center", marginTop: 20, overflow: "visible" }}>
+      <Svg width={screenWidth} height={outerRadius * 2 + 120}>
+        <G x={screenWidth / 2} y={outerRadius + 40}>
+          {arcData.map((slice) => {
+            const arcGenerator = d3.arc<any>().cornerRadius(5);
+            const path = arcGenerator({
+              ...slice,
+              innerRadius,
+              outerRadius: slice.data.name === activeId ? outerRadius + 10 : outerRadius, // 클릭된 항목 강조
+            });
+
+            const [lineStartX, lineStartY] = arcGenerator.centroid({
+              ...slice,
+              innerRadius,
+              outerRadius: outerRadius + 50,
+            });
+            const [lineEndX, lineEndY] = arcGenerator.centroid({
+              ...slice,
+              innerRadius,
+              outerRadius: outerRadius + 110,
+            });
+
+            return (
+              <G key={slice.data.name}>
+                <Path
+                  d={path!}
+                  fill={slice.data.color}
+                  fillOpacity={slice.data.name === activeId ? 1 : 0.8}
+                  onPress={() => setActiveId(slice.data.name)} 
+                />
+                <Line
+                  x1={lineStartX}
+                  y1={lineStartY}
+                  x2={lineEndX}
+                  y2={lineEndY}
+                  stroke="#000"
+                  strokeWidth={1}
+                />
+                <SvgText
+                  x={lineEndX}
+                  y={lineEndY}
+                  fill="#000"
+                  fontSize={15}
+                  textAnchor={lineEndX > 0 ? "start" : "end"}
+                  alignmentBaseline="middle"
+                >
+                  {slice.data.name} 
+                </SvgText>
+              </G>
+            );
+          })}
+        </G>
+      </Svg>
     </View>
   );
 };
+const ListItem = ({ name, amount }: { name: string; amount: number}) => (
+  <View style={styles.listItem}>
+    <View style={[styles.circle, { backgroundColor: Colors.mint }]} />  
+    <Text style={styles.name}>{name}</Text>
+    <Text style={styles.amount}>{amount.toLocaleString()} 원</Text>
+  </View>
+);
+
+
 export default function Home() {
   const scrollRef = useRef<ScrollView>(null);
   const [index, setIndex] = useState(0); // 0: 달력, 1: 통계
   const scrollX = useRef(new Animated.Value(0)).current;
-  const [selected, setSelected] = useState<String>(today);
   const tabs = useMemo(() => ['달력', '통계'], []);
   const router = useRouter();
   const handleTabPress = (i: number) => {
@@ -135,38 +324,108 @@ export default function Home() {
     outputRange: [0, screenWidth / tabs.length],
   });
 
-  const [activeId, setActiveId] = useState<string | null>(null);
-
-  const pieGenerator = d3.pie<any>().value((d) => d.value);
-  const arcData = pieGenerator(piedata);
-
-  const outerRadius = 100;
-  const innerRadius = 50;
-
+  const [totalExpense, setTotalExpense] = useState<number | null>(null);
   const [savingInput, setSavingInput] = useState('');
-  const [savingSaves, setSavingsSaves] = useState<number>();
-
   const [expenseInput, setExpenseInput] = useState('');
+  const [savingSaves, setSavingsSaves] = useState<number>();
   const [expenseSaves, setExpenseSaves] = useState<number>();
+  const [incomeGoal, setIncomeGoal] = useState<number | null>(null);
+  const [expenseGoal, setExpenseGoal] = useState<number | null>(null);
+  const [categoryExpenses, setCategoryExpenses] = useState<any[]>([]); // 카테고리별 지출 합계 저장
 
-  const formatWitCommas = (s:string) =>
-    s.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-  const handleChangeSaving = (txt: string)=>{
-    const digits = txt.replace(/[^\d]/g, ''); 
-    setSavingInput(formatWitCommas(digits));
-  }
-  const handleChangeExpense = (txt: string)=>{
-    const digits = txt.replace(/[^\d]/g, ''); 
-    setExpenseInput(formatWitCommas(digits));
-  }
-  const applySaving = ()=>{
-    const n = Number((savingInput||'0').replace(/,/g,''));
-    if (!isNaN(n)) setSavingsSaves(n);
-  }
-  const applyExpense = ()=>{
-    const n = Number((savingInput||'0').replace(/,/g,''));
-    if (!isNaN(n)) setExpenseSaves(n);
-  }
+  const [dayLedger, setDayLedger] = useState<Ledger>({}); 
+  const currentMonth = today.substring(0, 7); 
+  const year = parseInt(currentMonth.substring(0, 4)); 
+  const month = parseInt(currentMonth.substring(5, 7)); 
+
+  useEffect(() => {
+    const loadMonthExpenseData = async () => {
+      const daysOfMonth = getDaysInMonth(today);
+      const expensePromises = daysOfMonth.map(date => fetchExpenseData(date));
+      const results = await Promise.all(expensePromises);
+      const newLedger: Ledger = {};
+      results.forEach(item => {
+          if (item && item.date) {
+              newLedger[item.date] = { expense: item.expense };
+          }
+      });
+      setDayLedger(newLedger);
+
+    };
+    if (index === 0) {
+        loadMonthExpenseData();
+    }
+    const loadMonthIncomeData = async () => {
+      const daysOfMonth = getDaysInMonth(today);
+      const incomePromises = daysOfMonth.map(date => fetchIncomeData(date));
+      const results = await Promise.all(incomePromises);
+      const newLedger: Ledger = {};
+      results.forEach(item => {
+          if (item && item.date) {
+              newLedger[item.date] = { income: item.income };
+          }
+      });
+      setDayLedger(newLedger);
+
+    };
+    if (index === 0) {
+        loadMonthIncomeData();
+    }
+  }, [currentMonth, index]);
+
+  useEffect(() => {
+    const loadGoals = async () => {
+      const goals = await fetchGoals();
+      if (goals) {
+        setIncomeGoal(goals.incomeGoal);
+        setExpenseGoal(goals.expenseGoal);
+      }
+    };
+    loadGoals();
+  }, []);
+
+  useEffect(() => {
+    const loadTotalExpense = async () => {
+      const expense = await fetchTotalExpense(year, month);
+      if (expense !== null) {
+        setTotalExpense(expense); // 총 지출 금액을 상태에 저장
+      }
+    };
+    loadTotalExpense();
+
+    const loadCategoryExpenses = async () => {
+      const expenses = await fetchCategoryExpenses(year, month);
+      if (expenses !== null) {
+        setCategoryExpenses(expenses); // 카테고리별 지출 합계를 상태에 저장
+      }
+    };
+
+    loadCategoryExpenses();
+  }, [year, month]); 
+
+  const handleChangeSaving = (txt: string) => {
+    const digits = txt.replace(/[^\d]/g, ''); // 숫자만 필터링
+    setSavingInput(digits); // 입력값 업데이트
+  };
+
+  const handleChangeExpense = (txt: string) => {
+    const digits = txt.replace(/[^\d]/g, ''); // 숫자만 필터링
+    setExpenseInput(digits); // 입력값 업데이트
+  };
+
+  const handleApplySaving = () => {
+    applyIncomeGoal(savingInput, setSavingsSaves); // incomeGoal 저장
+  };
+
+  const handleApplyExpense = () => {
+    applyExpenseGoal(expenseInput, setExpenseSaves); // expenseGoal 저장
+  };
+  const pieChartData = categoryExpenses.map((item) => ({
+    name: item.category,
+    value: item.amount,
+    color: item.color || getRandomColor(), 
+  })
+);
 
   return (
   <SafeAreaView style={styles.container} edges={['bottom']}>
@@ -213,9 +472,9 @@ export default function Home() {
           dayComponent={(props: any) => (
             <DayCell
               {...props}
-              ledger={dayLedger}
+              ledger={dayLedger} 
               onPress={(date) => {
-                router.replace('/record');
+                router.replace('/date');
               }}
             />
           )}
@@ -240,8 +499,8 @@ export default function Home() {
               placeholder="0"
               keyboardType="number-pad"
               returnKeyType="done"
-              onSubmitEditing={applySaving}  //엔터 눌렀을 때 적용
-              onEndEditing={applySaving}     // (안드로이드 숫자패드 대비)
+              onSubmitEditing={handleApplySaving}
+              onEndEditing={handleApplySaving}  
             />
             <Text style={styles.unit}>원</Text>
           </View>
@@ -258,8 +517,8 @@ export default function Home() {
                 placeholder="0"
                 keyboardType="number-pad"
                 returnKeyType="done"
-                onSubmitEditing={applyExpense}  //엔터 눌렀을 때 적용
-                onEndEditing={applyExpense}     // (안드로이드 숫자패드 대비)
+                onSubmitEditing={handleApplyExpense}  
+                onEndEditing={handleApplySaving} 
               />
             <Text style={styles.unit}>원</Text>
           </View>
@@ -273,63 +532,10 @@ export default function Home() {
           총 지출
         </Text>
         <Text style={{ fontSize: 30, color: Colors.black, fontWeight: 'bold', marginTop: 15, marginStart: 30}}>
-          1,000,000 원
+          {totalExpense ? totalExpense.toLocaleString() : '로딩 중...'} 원
         </Text>
         <View style={{ alignItems: "center", marginTop: 20, overflow: "visible" }}>
-          <Svg width={screenWidth} height={outerRadius * 2 + 120}>
-            <G x={screenWidth / 2} y={outerRadius + 40}>
-              {arcData.map((slice) => {
-                const arcGenerator = d3.arc<any>()
-                .cornerRadius(5);
-                const path = arcGenerator({
-                  ...slice,
-                  innerRadius,
-                  outerRadius: slice.data.name === activeId ? outerRadius + 10 : outerRadius,
-                  
-                })
-                ;
-                const [lineStartX, lineStartY] = arcGenerator.centroid({
-                  ...slice,
-                  innerRadius,
-                  outerRadius: outerRadius + 50,
-                });
-                const [lineEndX, lineEndY] = arcGenerator.centroid({
-                  ...slice,
-                  innerRadius,
-                  outerRadius: outerRadius + 110,
-                });
-
-                return (
-                  <G key={slice.data.name}>
-                    <Path
-                      d={path!}
-                      fill={slice.data.color}
-                      fillOpacity={slice.data.name === activeId ? 1 : 0.8}
-                      onPress={() => setActiveId(slice.data.name)}
-                    />
-                    <Line
-                      x1={lineStartX}
-                      y1={lineStartY}
-                      x2={lineEndX}
-                      y2={lineEndY}
-                      stroke="#333"
-                      strokeWidth={1}
-                    />
-                    <SvgText
-                      x={lineEndX}
-                      y={lineEndY}
-                      fill="#000"
-                      fontSize={15}   
-                      textAnchor={lineEndX > 0 ? "start" : "end"}
-                      alignmentBaseline="middle"
-                    >
-                      {slice.data.name}
-                    </SvgText>
-                  </G>
-                );
-              })}
-            </G>
-          </Svg>
+          <PieChartComponent data={pieChartData} />
         </View>
         <View style={{ marginTop: 3, alignItems: 'center' }}>
           <Image
@@ -339,16 +545,11 @@ export default function Home() {
           />
         </View>
         <View>
-          <View style={{ marginTop: 5 }}>
-            {sampleData.map((item) => (
-              <ListItem
-                key={item.id}
-                percent={item.percent}
-                name={item.name}
-                amount={item.amount}
-              />
-            ))}
-          </View>
+        <View style={{ marginTop: 5 }}>
+          {categoryExpenses.map((item, index) => (
+            <ListItem key={index} name={item.category} amount={item.amount}/>
+          ))}
+        </View>
         </View>
       </ScrollView> 
     </View>
@@ -370,67 +571,15 @@ const styles = StyleSheet.create({
   pageTitle: { fontSize: 18, fontWeight: '700' },
   chartContainer: { marginTop: 20, alignItems: 'center', justifyContent: 'center', position: 'relative', },
   scrollContainer: { paddingBottom: 20 },
-  
-  listItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 12,
-    marginLeft: 35,
-    marginRight: 35
-  },
-  circle: {
-    width: 13,
-    height: 13,
-    marginRight: 12,
-  },
-  percent: {
-    width: 50,
-    fontSize: 16,
-    color: Colors.black,
-    marginRight: 12,
-  },
-  name: {
-    fontSize: 16,
-    flex: 1,
-    color: Colors.black,
-    fontWeight: 'bold',
-    marginRight: 90,
-  },
-  amount: {
-    fontSize: 16,
-    color: '#333',
-    fontWeight: 'bold'   
-  },
-  calendarpage: {
-    width: screenWidth
-  },
-  entergoal: {    
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 20,
-  },
-  goalInputBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#D4D4D4' ,
-    backgroundColor: '#EEEEEE',
-    borderRadius: 10,
-    height: 40,
-    width: 150,
-    paddingHorizontal: 10,
-    marginRight: 40
-  },
-  goalInput: {
-    flex: 1,
-    fontSize: 18,
-    color: Colors.black,
-    paddingVertical: 0,
-    textAlign: 'right', 
-  },
-  unit: {
-    marginLeft: 6,
-    fontSize: 16,
-  },
+  listItem: { flexDirection: 'row', alignItems: 'center', marginTop: 15, marginLeft: 35, marginRight: 35 },
+  circle: { width: 13, height: 13, marginStart: 15, borderRadius: 20 },
+  percent: { width: 50, fontSize: 16, color: Colors.black, marginRight: 12,},
+  name: { fontSize: 16, flex: 1,color: Colors.black, fontWeight: 'bold', marginStart: 20, },
+  amount: { fontSize: 16, color: '#333', fontWeight: 'bold', marginEnd: 20 },
+  calendarpage: { width: screenWidth },
+  entergoal: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20,},
+  goalInputBox: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: '#D4D4D4', backgroundColor: '#EEEEEE', borderRadius: 10, height: 40, width: 150,
+    paddingHorizontal: 10, marginRight: 40 },
+  goalInput: { flex: 1, fontSize: 18, color: Colors.black, paddingVertical: 0, textAlign: 'right', },
+  unit: { marginLeft: 6,fontSize: 16, },
 });

@@ -1,42 +1,115 @@
 import GroupBarChart from '@/components/GroupBarChart';
 import { Colors } from '@/constants/colors';
-import React, { useState } from 'react';
-import { Dimensions, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { Dimensions, Image, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { LineChart } from 'react-native-gifted-charts';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+const token =
+  "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJIeWVyaW0ga2ltIiwic3ViIjoiMSIsImlhdCI6MTc2MDc2NjU4NCwiZXhwIjoxNzYxOTc2MTg0fQ.jpDSg5pGzaPgDQPqBjbK_oqfWvwpMf3wkaGpMGMHez4";
+
+const API_BASE_URL = "http://ing-default-financedocin-b81cf-108864784-1b9b414f3253.kr.lb.naverncp.com";
+
 const screenWidth = Dimensions.get('window').width;
+const IMG_ARROW_LEFT = require('../../assets/images/ic_arrow_left.png');
+const IMG_ARROW_LEFT_CHOSEN = require('../../assets/images/ic_arrow_left_choose.png');
+const IMG_ARROW_RIGHT = require('../../assets/images/ic_arrow_right.png');
+const IMG_ARROW_RIGHT_CHOSEN = require('../../assets/images/ic_arrow_right_choose.png');
 
-const getLastSixMonths = () => {
-  const months: string[] = [];
-  const currentDate = new Date();
-  for (let i = 0; i < 6; i++) {
-    const month = new Date(currentDate);
-    month.setMonth(currentDate.getMonth() - i);
-    months.push(`${month.getMonth() + 1}월`);
+const fetchMonthlyExpense = async (year: number, month: number) => {
+  try {
+    const res = await fetch(`${API_BASE_URL}/report/api/summary/report?year=${year}&month=${month}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': token,
+      },
+    });
+    if (res.ok) {
+      const data = await res.json();
+      return data; 
+    } else {
+      const errorText = await res.text();
+      console.error(`월 총 지출 조회 실패: ${res.status} - ${errorText}`);
+    }
+  } catch (err) {
+    console.error("월 총 지출 API 호출 중 오류 발생:", err);
   }
-  return months.reverse();
+  return null; 
 };
+const fetchGoals = async () => {
+  try {
+    const res = await fetch(`${API_BASE_URL}/report/api/goal`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': token,
+      },
+    });
+    const data = await res.json();
 
-const LineChartComponent = () => {
-  const raw = [10, 20, 15, 30, 40, 25];
-  const data = raw.map(v => ({ value: v }));
-  const labels = getLastSixMonths();
+    console.log("Expense Goal:", data.expenseGoal);
+    console.log("Income Goal:", data.incomeGoal);
+
+    return data; 
+    
+  } catch (err) {
+    console.error("목표 API 호출 중 오류 발생:", err);
+  }
+  return null;
+};
+const fetchLast6Months = async (year: number, month: number) => {
+  try {
+    const res = await fetch(`${API_BASE_URL}/report/api/summary/report?year=${year}&month=${month}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': token,
+      },
+    });
+    const data = await res.json();
+    return data.last6Months; // last6Months 반환
+  } catch (err) {
+    console.error("API 호출 중 오류 발생:", err);
+  }
+  return null;
+};
+const LineChartComponent = ({ year, month }: { year: number, month: number }) => {
+  const [chartData, setChartData] = useState<any[]>([]); // Chart 데이터를 저장할 상태
+  const [labels, setLabels] = useState<string[]>([]); // X축 레이블 (월)
+
+  useEffect(() => {
+    const loadLast6MonthsData = async () => {
+      const last6MonthsData = await fetchLast6Months(year, month);
+      if (last6MonthsData !== null) {
+        const formattedData = last6MonthsData.map((item: any) => ({
+          value: item.expense, // y축 값은 expense
+        }));
+        setChartData(formattedData);
+
+        // x축 레이블로 월 정보를 설정
+        const months = last6MonthsData.map((item: any) => `${item.month}월`);
+        setLabels(months);
+      }
+    };
+
+    loadLast6MonthsData();
+  }, [month]); // currentMonth가 변경될 때마다 호출
 
   return (
     <View style={{ flexDirection: 'row', padding: 10 }}>
-      <View style={{ flex: 1, marginLeft: 15, marginRight: 15 }}>
+      <View style={{ flex: 1, marginLeft: 15 }}>
         <LineChart
           initialSpacing={20}
-          data={data}
-          width={screenWidth-120}
+          data={chartData} // 차트 데이터
+          width={screenWidth - 120} // 화면 크기에 맞게 차트 크기 설정
           height={200}
           thickness={2}
           color="rgba(255, 145, 145, 1)"
-          hideRules={true}         
-          showVerticalLines={false}        
-          xAxisLabelTexts={labels}
-          xAxisLabelTextStyle={{ fontSize: 12, color: 'black', marginTop: 4,  }}
+          hideRules={true}
+          showVerticalLines={false}
+          xAxisLabelTexts={labels} // x축 레이블로 월을 사용
+          xAxisLabelTextStyle={{ fontSize: 12, color: 'black', marginTop: 4 }}
           xAxisThickness={1}
           yAxisThickness={1}
           dataPointsRadius={4}
@@ -49,55 +122,144 @@ const LineChartComponent = () => {
   );
 };
 
-
 export default function Stats() {
-  const actualValues  = [40,50]
-  const targetValues  = [100,60]
-  const categories=[
-    { img: require('../../assets/images/img_stats_category.png'), name: '식비', expense: 206513 },
-    { img: require('../../assets/images/img_stats_category.png'), name: '식비', expense: 20651553 },
-  ];
-  const [isVisible, setIsVisible] = useState(false);
-
   const handlePress = () => {
     setIsVisible(true);
     setTimeout(() => {
       setIsVisible(false);
     }, 1500);
   };
+
+  const [isVisible, setIsVisible] = useState(false);
+  
+  const [targetValues, setTargetValues] = useState([0, 0]); // 목표 지출과 저축 값
+  const [actualValues, setActualValues] = useState([0, 0]); // 목표 지출과 저축 값
+
+  const [categories, setCategories] = useState<any[]>([]); // 카테고리별 지출 저장
+  const [totalExpense, setTotalExpense] = useState<number | null>(null); // 월 총 지출 저장
+  const [month, setCurrentMonth] = useState<number>(10); // 현재 월 저장
+  const [year, setYear] = useState<number>(2025);
+  const [financialScore, setFinancialScore] = useState<number | null>(null); // 금융 점수 저장
+
+  const [chartData, setChartData] = useState<any[]>([]); // Chart 데이터를 저장할 상태
+
+
+// 좌우 화살표 버튼의 활성화/선택 상태를 관리하는 상태 추가
+const [leftArrowPressed, setLeftArrowPressed] = useState(false);
+const [rightArrowPressed, setRightArrowPressed] = useState(false);
+
+const handlePreviousMonth = () => {
+    setLeftArrowPressed(true);
+    setTimeout(() => setLeftArrowPressed(false), 200);
+
+    if (month === 1) {
+        setYear(prevYear => prevYear - 1); 
+    } 
+};
+const handleNextMonth = () => {
+    setRightArrowPressed(true);
+    setTimeout(() => setRightArrowPressed(false), 200);
+
+    if (month === 12) {
+        setYear(prevYear => prevYear + 1);
+    }
+};
+
+  useEffect(() => {
+    const loadMonthlyExpense = async () => {
+      const expenseData = await fetchMonthlyExpense(year, month);
+      if (expenseData !== null) {
+        setTotalExpense(expenseData.totalExpense); // 총 지출 값 저장
+        setCategories(expenseData.categoryExpenses); // 카테고리별 지출 값 저장
+        setFinancialScore(expenseData.financialScore); // 금융 점수 저장
+      }
+    };
+    loadMonthlyExpense();
+  }, [year, month]); 
+
+  useEffect(() => {
+    const loadGoals = async () => {
+      const goalData = await fetchGoals();
+      if (goalData !== null) {
+        const { expenseGoal, incomeGoal } = goalData;
+        setTargetValues([expenseGoal, incomeGoal]); // incomeGoal과 expenseGoal을 targetValues에 설정
+      }
+    };
+    loadGoals();
+
+    const loadActual = async () => {
+      const ActualData = await fetchMonthlyExpense(year, month);
+      if (ActualData !== null) {
+        const { totalExpense, totalSaving } = ActualData;
+        setActualValues([totalExpense, totalSaving]); // incomeGoal과 expenseGoal을 targetValues에 설정
+      }
+    };
+    loadActual();
+  }, []); 
+
+  useEffect(() => {
+    const loadLast6MonthsData = async () => {
+      const last6MonthsData = await fetchLast6Months(year, month);
+      if (last6MonthsData !== null) {
+        // 데이터를 chartData에 적절히 포맷하여 저장
+        const formattedData = last6MonthsData.map((item: any) => ({
+          value: item.expense,
+          label: `${item.month}월`, // x축 레이블로 월을 설정
+        }));
+        setChartData(formattedData);
+      }
+    };
+
+    loadLast6MonthsData();
+  }, [month]);
   
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
       <Text style={styles.title}>재무 진단서</Text>
-      <Text style={styles.month}>월</Text>
+        <View style={styles.monthContainer}> 
+          <Pressable onPress={handlePreviousMonth} style={styles.arrowButton}>
+            <Image
+              source={leftArrowPressed ? IMG_ARROW_LEFT_CHOSEN : IMG_ARROW_LEFT}
+              style={styles.arrowIcon}
+              resizeMode="contain"              
+            />
+          </Pressable>
 
+          <Text style={styles.monthText}>
+            {year}년 {month}월
+          </Text>
+
+          <Pressable onPress={handleNextMonth} style={styles.arrowButton}>
+            <Image
+              source={rightArrowPressed ? IMG_ARROW_RIGHT_CHOSEN : IMG_ARROW_RIGHT}
+              style={styles.arrowIcon}
+              resizeMode="contain"
+              />
+          </Pressable>
+        </View>
       <ScrollView contentContainerStyle={styles.scrollContainer}>
 
         {/* 첫 번째 분석 */}      
         <View style={styles.totalExpense}>
-          <Text style={styles.analysis}> 월 총 지출은 원입니다. </Text>
-          {categories.map((category, index) => (
-            <View key={index} style={styles.expenselists}>
-              <View style={styles.categoryItem}>
-                <View style={styles.categoryDetails}>
-                  <Image style={styles.categoryimg} source={category.img} />
-                  <Text style={styles.categoryname}>{category.name}</Text>
-                  <Text style={styles.categoryexpense}>{category.expense.toLocaleString()}원</Text>
+          <Text style={styles.analysis}>
+            {month}월 총 지출은 {totalExpense ? totalExpense.toLocaleString() : '로딩 중...'} 원입니다.
+          </Text>          
+          <View style={styles.expenselists}> 
+            {categories.map((category, index) => (
+              <View key={index} style={styles.categoryItem}>
+                  <View style={styles.categoryDetails}>
+                  {/* <Image style={styles.categoryimg} source={require('../../assets/images/img_stats_category.png')} /> */}
+                  <Text style={styles.categoryname}>{category.categoryName}</Text>
+                  <Text style={styles.categoryexpense}>
+                    {category.amount.toLocaleString()}원
+                  </Text>
                 </View>
               </View>
-              <View style={styles.categoryItem}>
-                <View style={styles.categoryDetails}>
-                  <Image style={styles.categoryimg} source={category.img} />
-                  <Text style={styles.categoryname}>{category.name}</Text>
-                  <Text style={styles.categoryexpense}>{category.expense.toLocaleString()}원</Text>
-                </View>
-              </View>
-            </View>
           ))}
+          </View>
         </View>
 
         <Text style={styles.analysis}>이번 달에는 목표에 얼마나 가까워졌을까요?</Text>
-
         <View style={styles.monthgoal}>
           <GroupBarChart  actualValues={actualValues} targetValues={targetValues} />
           <View style={styles.goalname}>
@@ -127,10 +289,8 @@ export default function Stats() {
         </View>
 
         <Text style={styles.analysis}>최근 6개월 간의 지출입니다.</Text>
-        <Text style={styles.subanalysis}>평균 지출 금액은 월 -원입니다.</Text>
-
         <View style={styles.monthgoal}>
-          <LineChartComponent /> 
+          <LineChartComponent year={year} month={month} />
         </View>
 
         <View style={styles.score}>
@@ -159,7 +319,7 @@ export default function Stats() {
                 )}
                 <Text style={styles.scoreText}>이번달 재무 건강 점수</Text>
                 <View style={styles.scoreNumberContainer}>
-                <Text style={styles.scoreScoreText}>80</Text>
+                <Text style={styles.scoreScoreText}>{financialScore}</Text>
               <Text style={styles.scoreEndText}>점</Text>
             </View>
           </View>
@@ -174,18 +334,18 @@ const styles = StyleSheet.create({
   title: { fontSize: 20, fontWeight: '900', textAlign: 'center', borderBottomWidth: StyleSheet.hairlineWidth, paddingTop: 13, paddingBottom: 13,},
   scrollContainer: { paddingBottom: 20 },
   totalExpense: {marginBottom: 50},
-  month: {fontSize: 19, fontWeight: 'bold', borderBottomWidth: StyleSheet.hairlineWidth, paddingTop:10, paddingBottom: 10,},
+  month: {fontSize: 19, fontWeight: 'bold', borderBottomWidth: StyleSheet.hairlineWidth, paddingTop:10, paddingBottom: 10, },
   analysis: {fontSize: 19, fontWeight: 'bold', paddingTop: 40, marginStart: 20, },
-  expenselists: { flexDirection: 'row', alignItems: 'center', marginTop: 20, marginStart: 30, marginEnd: 30 },
+  expenselists: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', marginTop: 20, marginStart: 20, marginEnd: 30 },
   categoryDetails: { flexDirection: 'row', alignItems: 'center', },
-  categoryItem: { width: '53%'},
-  categoryimg: {width: 23, height: 23, marginRight: 10},
-  categoryname: {fontSize: 15, fontWeight: '500',marginRight: 20},
-  categoryexpense: { fontSize: 15, fontWeight: '500', paddingRight: 20, flex: 1, textAlign: 'right',},
+  categoryItem: { width: '48%', marginBottom: 15},
+  // categoryimg: {width: 23, height: 23, marginRight: 10},
+  categoryname: {fontSize: 14, fontWeight: '500',marginRight: 10},
+  categoryexpense: { fontSize: 14, fontWeight: '500', paddingRight: 20, flex: 1, textAlign: 'right',},
   goalname: { },
   monthgoal: { paddingTop:20, marginTop: 20, alignItems: 'center', justifyContent: 'center', marginBottom: 20,},
   subanalysis: {fontSize: 15, fontWeight: '500',paddingTop: 20, marginStart: 20},
-  score: {alignItems: 'center',justifyContent: 'center'},
+  score: {alignItems: 'center',justifyContent: 'center', marginBottom: 100},
   scorebox: {width: 346, height: 58, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingRight: 20,},
   questionbox: {width: 16, height: 16, position: 'absolute', top: -20, left: 8,},
   functionbox: {width: 200, position: 'absolute', top: -70, left: 30,resizeMode: 'contain'},
@@ -196,4 +356,24 @@ const styles = StyleSheet.create({
   scoreText: { fontSize: 15, fontWeight: 'bold',left: -40},
   scoreScoreText:{ fontSize: 25, fontWeight: '800', marginRight: 15, },
   scoreEndText: { fontSize: 15, fontWeight: 'bold', color: Colors.gray},
+
+monthContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginVertical: 10,
+},
+monthText: {
+    fontSize: 24, // 기존 월 텍스트 크기
+    fontWeight: 'bold',
+    marginHorizontal: 15,
+    color: Colors.black, // 색상 정의에 따라 수정
+},
+arrowButton: {
+    padding: 10,
+},
+arrowIcon: {
+    width: 20, // 이미지 크기 설정
+    height: 20,
+},
 });

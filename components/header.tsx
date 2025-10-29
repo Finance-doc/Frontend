@@ -1,17 +1,18 @@
 import { Colors } from '@/constants/colors';
 import React from 'react';
-import { Image, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Image, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-const ICON_PROFILE = require('@/assets/images/ic_profile.png');
+// const ICON_PROFILE = require('@/assets/images/ic_profile.png');
 
 export default function Header() {
   return (
     <SafeAreaView edges={['top']} style={styles.safe}>
       <View style={styles.bar}>
-        <TouchableOpacity style={styles.profileBtn} onPress={() => { }}>
+        <Image source={require('@/assets/images/text_logo_name.png')} style={styles.logo_name} />
+        {/* <TouchableOpacity style={styles.profileBtn} onPress={() => { }}>
           <Image source={ICON_PROFILE} style={styles.profileIcon} resizeMode="contain" />
-        </TouchableOpacity>
+        </TouchableOpacity> */}
       </View>
     </SafeAreaView>
   );
@@ -22,7 +23,7 @@ const styles = StyleSheet.create({
   bar: {
     height: 48,
     paddingHorizontal: 20,
-    alignItems: 'flex-end',
+    alignItems: 'center',
     justifyContent: 'center',
     borderBottomWidth: StyleSheet.hairlineWidth,
     backgroundColor: Colors.white
@@ -34,4 +35,5 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   profileIcon: { width: 28, height: 28 },
+  logo_name: { alignItems: 'center', justifyContent: 'center',}
 });
