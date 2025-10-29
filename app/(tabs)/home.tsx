@@ -215,7 +215,7 @@ export default function Home() {
               {...props}
               ledger={dayLedger}
               onPress={(date) => {
-                router.replace('/record');
+                router.replace('/date');
               }}
             />
           )}
