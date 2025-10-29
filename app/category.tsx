@@ -2,21 +2,63 @@
 import { Colors } from '@/constants/colors';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import * as SecureStore from 'expo-secure-store';
 import React, { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-const initialCategories = [
-  '식비', '생활용품', '패션/미용', '교육', '교통/차량', '건강', '문화생활'
-];
+const API_BASE_URL = 'http://ing-default-financedocin-b81cf-108864784-1b9b414f3253.kr.lb.naverncp.com';
+const apiFetch = async (endpoint: string, options: RequestInit = {}) => {
+  try {
+    const token = await SecureStore.getItemAsync("accessToken");
+
+    const headers = {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...options.headers,
+    };
+
+    const res = await fetch(`${API_BASE_URL}${endpoint}`, { ...options, headers });
+
+    if (!res.ok) {
+      const errorText = await res.text();
+      throw new Error(errorText);
+    }
+
+    return await res.json();
+  } catch (err) {
+    throw err;
+  }
+};
+const fetchCategories = async () => {
+  try {
+    const data = await apiFetch(`/report/api/categories`, { method: 'GET' });
+      if (Array.isArray(data)) {
+        return data.map((item: any) => item.name);
+      }
+      return [];
+  } catch (err) {
+    console.error('카테고리 목록 조회 실패:', err);
+    return [];
+  }
+};
 
 export default function CategoryScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
-  const [userCategories, setUserCategories] = useState<string[]>(initialCategories);
+  const [userCategories, setUserCategories] = useState<string[]>([]);  
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true); 
+  useEffect(() => {
+    const loadCategories = async () => {
+      setLoading(true);
+      const categories = await fetchCategories();
+      setUserCategories(categories);
+      setLoading(false);
+    };
+    loadCategories();
+  }, []);
 
-  // categoryinput.tsx에서 새 카테고리가 추가되었을 때 상태 업데이트
   useEffect(() => {
     if (params.newCategory && typeof params.newCategory === 'string') {
       const newCat = params.newCategory;
@@ -24,7 +66,6 @@ export default function CategoryScreen() {
         setUserCategories(prev => [...prev, newCat]);
         setSelectedCategory(newCat); // 새로 추가된 항목을 바로 선택
       }
-      // 파라미터 제거 (이후 새로고침 시 중복 추가 방지)
       router.setParams({ newCategory: undefined });
     }
   }, [params.newCategory]);
@@ -35,7 +76,6 @@ export default function CategoryScreen() {
   
   const handleConfirm = () => {
     if (selectedCategory) {
-      // 선택된 카테고리를 input.tsx로 전달하고 뒤로 돌아가기
       router.navigate({
         pathname: '/input', // 돌아갈 화면 경로
         params: { selectedCategory: selectedCategory },
@@ -59,7 +99,6 @@ export default function CategoryScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* 헤더 */}
       <View style={styles.header}>
         <Pressable onPress={() => router.back()} style={styles.backButton}>
           <Ionicons name="chevron-back" size={24} color="black" />
@@ -70,8 +109,11 @@ export default function CategoryScreen() {
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.categoryGrid}>
-          {userCategories.map(cat => renderCategoryItem({ item: cat }))}
-          
+        {userCategories.map((cat) => (
+          <React.Fragment key={cat}> 
+            {renderCategoryItem({ item: cat })}
+          </React.Fragment>
+          ))}          
           {/* 카테고리 추가 버튼 */}
           <Pressable
             style={styles.addCategoryButton}
@@ -97,7 +139,15 @@ export default function CategoryScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.white, },
-  header: { /* ... 스타일 생략 ... */ },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 15,
+    paddingVertical: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#ccc',
+  },  
   headerTitle: { fontSize: 18, fontWeight: 'bold', },
   backButton: { padding: 5, },
   placeholder: { width: 34, },
@@ -105,24 +155,25 @@ const styles = StyleSheet.create({
   
   categoryGrid: {
     flexDirection: 'row',
-    flexWrap: 'wrap', // 여러 줄로 표시
+    flexWrap: 'wrap',
   },
   categoryTag: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    width:60,
+    height: 40,
     borderRadius: 20,
     backgroundColor: '#f0f0f0',
     marginRight: 10,
     marginBottom: 10,
+    alignItems: 'center',
+    justifyContent: 'center', 
   },
   categoryTagActive: {
     backgroundColor: '#A4A5FF', // 이미지의 보라색 계열
-    borderWidth: 1,
-    borderColor: '#7A7BE6'
   },
   categoryText: {
-    fontSize: 16,
+    fontSize: 15,
     color: '#333',
+    fontWeight: 'bold'
   },
   categoryTextActive: {
     color: Colors.white,
@@ -154,5 +205,6 @@ const styles = StyleSheet.create({
     color: Colors.white,
     fontSize: 18,
     fontWeight: 'bold',
+
   },
 });

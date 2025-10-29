@@ -98,7 +98,7 @@ const formatKoreanDate = (dateString: string) => {
 
 // 지출/수입 항목 렌더링 컴포넌트
 const TransactionItem = ({ item, type }: { item: any; type: 'income' | 'expense' }) => {
-  const color = type === 'income' ? '#004DFF' : '#E54B4B';
+  const color = type === 'income' ? '#004DFF' : '#FF0004';
   const sign = type === 'income' ? '+' : '-';
   const router = useRouter();
 
@@ -111,6 +111,7 @@ const TransactionItem = ({ item, type }: { item: any; type: 'income' | 'expense'
         amount: item.amount,
         description: item.description,
         category: item.categoryName,
+        date: item.date, 
       },
     });
   };
@@ -291,7 +292,7 @@ container: { backgroundColor: Colors.white,},
   },
   expenseText: {
     fontSize: 16,
-    color: '#FF4545',
+    color: '#FF0004',
     fontWeight: '600',
   },
   listContent: {

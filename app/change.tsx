@@ -1,18 +1,48 @@
 import { Colors } from '@/constants/colors';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import * as SecureStore from 'expo-secure-store';
 import React, { useEffect, useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+
+const API_BASE_URL = 'http://ing-default-financedocin-b81cf-108864784-1b9b414f3253.kr.lb.naverncp.com';
+const apiFetch = async (endpoint: string, options: RequestInit = {}) => {
+  try {
+    const token = await SecureStore.getItemAsync("accessToken");
+
+    const headers = {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...options.headers,
+    };
+
+    const res = await fetch(`${API_BASE_URL}${endpoint}`, { ...options, headers });
+
+    if (!res.ok) {
+      const errorText = await res.text();
+      throw new Error(errorText);
+    }
+
+    return await res.json();
+  } catch (err) {
+    throw err;
+  }
+};
 
 // 통화 형식으로 변환
 const formatWithCommas = (s: string) => {
   const digits = s.replace(/[^\d]/g, '');
   return digits.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 };
+const formatKoreanDate = (dateString: string) => {
+  const date = new Date(dateString);
+  const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
+  return `${date.getFullYear()}년 ${date.getMonth() + 1}월 ${date.getDate()}일 (${dayNames[date.getDay()]})`;
+};
+
 // 금액을 콤마 없이 숫자로 변환
 const cleanAmount = (s: string) => Number(s.replace(/[^\d]/g, ''));
-
 
 export default function ChangeScreen() {
   const router = useRouter();
@@ -26,9 +56,14 @@ export default function ChangeScreen() {
 
   const [type, setType] = useState<'income' | 'expense' | 'saving'>(initialType);
   const [category, setCategory] = useState<string>(initialCategory);
-  const [date, setDate] = useState<string>('2025년 8월 8일 금요일'); // 수정할 기록의 날짜
   const [amountInput, setAmountInput] = useState<string>(initialAmount);
   const [description, setDescription] = useState<string>(initialDescription);
+
+  const [date, setDate] = useState<string>(
+  params.date && typeof params.date === 'string'
+    ? formatKoreanDate(params.date)
+    : '날짜 정보 없음'
+);
   
   // category.tsx에서 선택된 카테고리 파라미터를 받아와 상태 업데이트
   useEffect(() => {
@@ -108,7 +143,7 @@ export default function ChangeScreen() {
           {/* 날짜 */}
           <View style={styles.row}>
             <Text style={styles.label}>날짜</Text>
-            <Text style={styles.dateText}>{date}</Text> {/* 날짜는 읽기 전용으로 표시 */}
+            <Text style={styles.dateText}>{date}</Text> 
           </View>
 
           {/* 금액 */}

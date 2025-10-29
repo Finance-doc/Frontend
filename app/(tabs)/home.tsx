@@ -299,37 +299,29 @@ export default function Home() {
   const month = parseInt(currentMonth.substring(5, 7)); 
 
   useEffect(() => {
-    const loadMonthExpenseData = async () => {
-      const daysOfMonth = getDaysInMonth(today);
-      const expensePromises = daysOfMonth.map(date => fetchExpenseData(date));
-      const results = await Promise.all(expensePromises);
-      const newLedger: Ledger = {};
-      results.forEach(item => {
-          if (item && item.date) {
-              newLedger[item.date] = { expense: item.expense };
-          }
-      });
-      setDayLedger(newLedger);
+    if (index !== 0) return;
 
-    };
-    if (index === 0) {
-        loadMonthExpenseData();
-    }
-    const loadMonthIncomeData = async () => {
+    const loadMonthData = async () => {
       const daysOfMonth = getDaysInMonth(today);
-      const incomePromises = daysOfMonth.map(date => fetchIncomeData(date));
-      const results = await Promise.all(incomePromises);
+
+      // 한꺼번에 데이터 요청
+      const [expenseResults, incomeResults] = await Promise.all([
+        Promise.all(daysOfMonth.map(fetchExpenseData)),
+        Promise.all(daysOfMonth.map(fetchIncomeData)),
+      ]);
+
       const newLedger: Ledger = {};
-      results.forEach(item => {
-          if (item && item.date) {
-              newLedger[item.date] = { income: item.income };
-          }
+
+      daysOfMonth.forEach((date) => {
+        const expense = expenseResults.find((e) => e.date === date)?.expense || 0;
+        const income = incomeResults.find((i) => i.date === date)?.income || 0;
+        newLedger[date] = { income, expense };
       });
+
       setDayLedger(newLedger);
     };
-    if (index === 0) {
-        loadMonthIncomeData();
-    }
+
+    loadMonthData();
   }, [currentMonth, index]);
 
   useFocusEffect(

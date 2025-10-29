@@ -2,25 +2,73 @@
 import { Colors } from '@/constants/colors';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import * as SecureStore from 'expo-secure-store';
 import React, { useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+
+const API_BASE_URL = 'http://ing-default-financedocin-b81cf-108864784-1b9b414f3253.kr.lb.naverncp.com';
+const apiFetch = async (endpoint: string, options: RequestInit = {}) => {
+  try {
+    const token = await SecureStore.getItemAsync("accessToken");
+
+    const headers = {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...options.headers,
+    };
+
+    const res = await fetch(`${API_BASE_URL}${endpoint}`, { ...options, headers });
+
+    if (!res.ok) {
+      const errorText = await res.text();
+      throw new Error(errorText);
+    }
+
+    return await res.json();
+  } catch (err) {
+    throw err;
+  }
+};
+const addCategory = async (categoryName: string) => {
+  try {
+    const res = await apiFetch(`/report/api/categories`, {
+      method: 'POST',
+      body: JSON.stringify({ name: categoryName }),
+    });
+    console.log('카테고리 추가 성공:', res);
+    return res;
+  } catch (err) {
+    console.error('카테고리 추가 실패:', err);
+    throw err;
+  }
+};
 
 export default function CategoryInputScreen() {
   const router = useRouter();
   const [newCategoryName, setNewCategoryName] = useState('');
 
-  const handleAddCategory = () => {
-    if (newCategoryName.trim()) {
-      // 카테고리 목록을 업데이트하는 로직 (실제 앱에서는 전역 상태 관리 필요)
-      // 여기서는 예시로 router.back() 시 파라미터를 넘겨서 이전 화면에서 처리하도록 구현
+  const handleAddCategory = async () => {
+    if (!newCategoryName.trim()) {
+      Alert.alert('입력 오류', '카테고리명을 입력해주세요.');
+      return;
+    }
+
+    try {
+      console.log('카테고리 추가 요청:', newCategoryName);
+      const result = await addCategory(newCategoryName.trim());
+
+      Alert.alert('완료', '새 카테고리가 추가되었습니다.');
+      console.log('응답 데이터:', result);
+
       router.navigate({
-        pathname: '/category', // 돌아갈 화면 경로
+        pathname: '/category',
         params: { newCategory: newCategoryName.trim() },
       });
+    } catch (err) {
+      Alert.alert('오류', '카테고리 추가 중 문제가 발생했습니다.');
     }
   };
-
   return (
     <SafeAreaView style={styles.container}>
       {/* 헤더 */}
@@ -86,9 +134,10 @@ const styles = StyleSheet.create({
     borderBottomColor: '#ccc',
     paddingVertical: 10,
     marginBottom: 20,
+    marginTop: 80
   },
   addButton: {
-    backgroundColor: '#7A7BE6', // 보라색 버튼
+    backgroundColor: '#6A6DFF', // 보라색 버튼
     paddingVertical: 15,
     borderRadius: 10,
     alignItems: 'center',

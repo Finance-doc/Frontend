@@ -16,6 +16,10 @@ export default function RootLayout() {
           <Stack.Screen name="login" options={{ headerShown: false }} />
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           <Stack.Screen name="date" options={{ headerShown: false }} /> 
+          <Stack.Screen name="input" options={{ headerShown: false }} />
+          <Stack.Screen name="category" options={{ headerShown: false }} />
+          <Stack.Screen name="categoryinput" options={{ headerShown: false }} />
+          <Stack.Screen name="change" options={{ headerShown: false }} /> 
           <Stack.Screen name="inputaccount" options={{ headerShown: false }} /> 
         </Stack>
       <StatusBar style="dark" hidden={false} translucent={false} />
