@@ -8,9 +8,6 @@ import { Image, ImageBackground, StyleSheet, Text, TouchableOpacity, View, useWi
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 const redirectUri = AuthSession.makeRedirectUri({ useProxy: true, } as any);
-console.log("등록해야 할 Redirect URI:", redirectUri);
-
-
 const KAKAO_CLIENT_ID = 'ecaeda093cbe23fb23a3a1abfc3e1512'; 
 
 const IMG_ICON = require('../assets/images/img_icon.png');
@@ -103,7 +100,7 @@ useEffect(() => {
 
       <TouchableOpacity 
         activeOpacity={0.9} 
-        onPress={() => router.replace('/(tabs)/home')}
+        onPress={() => router.replace('/inputaccount')}
         style={[styles.startBtn, { width: btnWidth, alignSelf: 'center' }]} 
       >
       <Text style={styles.startText}>시작하기</Text> 

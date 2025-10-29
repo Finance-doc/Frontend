@@ -1,5 +1,6 @@
 import { Colors } from '@/constants/colors';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as SecureStore from 'expo-secure-store';
 import React, { useEffect, useRef, useState } from 'react';
 import { FlatList, Image, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -23,11 +24,30 @@ type QuestionResponse = {
 };
 
 /* ---------- API ---------- */
-const API_URL =
+const API_BASE_URL =
   'http://ing-default-financedocin-b81cf-108864784-1b9b414f3253.kr.lb.naverncp.com';
-const TEST_TOKEN =
-  'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJIeWVyaW0ga2ltIiwic3ViIjoiMSIsImlhdCI6MTc2MDc2NjU4NCwiZXhwIjoxNzYxOTc2MTg0fQ.jpDSg5pGzaPgDQPqBjbK_oqfWvwpMf3wkaGpMGMHez4';
+const apiFetch = async (endpoint: string, options: RequestInit = {}) => {
+  try {
+    const token = await SecureStore.getItemAsync("accessToken");
 
+    const headers = {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...options.headers,
+    };
+
+    const res = await fetch(`${API_BASE_URL}${endpoint}`, { ...options, headers });
+
+    if (!res.ok) {
+      const errorText = await res.text();
+      throw new Error(errorText);
+    }
+
+    return await res.json();
+  } catch (err) {
+    throw err;
+  }
+};
 /* ---------- Recommend Options (순차 질문) ---------- */
 const INCOME_OPTS = ['200만원 이하', '300만원', '400만원', '500만원 이상'];
 const SAVING_OPTS = ['5%', '10%', '15%', '20% 이상'];
@@ -106,10 +126,7 @@ export default function Chat() {
   /* ---------- API Calls ---------- */
   const fetchQuestions = async () => {
     try {
-      const res = await fetch(`${API_URL}/recommend/questions`, {
-        headers: { Authorization: TEST_TOKEN },
-      });
-      const data: QuestionResponse[] = await res.json();
+      const data = await apiFetch('/recommend/questions', { method: 'GET' });
       setQuestions(data);
       return true;
     } catch (e) {
@@ -117,15 +134,14 @@ export default function Chat() {
       return false;
     }
   };
-
   const submitSurvey = async () => {
     try {
-      const res = await fetch(`${API_URL}/recommend/survey`, {
+      const data = await apiFetch('/recommend/survey', {
         method: 'POST',
-        headers: { Authorization: TEST_TOKEN, 'Content-Type': 'application/json' },
         body: JSON.stringify({ answers }),
       });
-      return (await res.json()) as {
+
+      return data as {
         personalityType: string;
         totalScore: number;
         description: string;
@@ -135,21 +151,21 @@ export default function Chat() {
       return null;
     }
   };
-
   const submitAiReport = async (i: string, s: string, it: string) => {
     try {
-      const res = await fetch(`${API_URL}/recommend/ai-report`, {
+      const res = await apiFetch('/recommend/ai-report', {
         method: 'POST',
-        headers: { Authorization: TEST_TOKEN, 'Content-Type': 'application/json' },
         body: JSON.stringify({ income: i, savingRate: s, interest: it }),
       });
-      return await res.text(); // 마크다운/텍스트
+
+      // 이 API는 text 응답이라 json 대신 text()로 처리
+      if (typeof res === 'string') return res; // 이미 text일 경우
+      return JSON.stringify(res);
     } catch (e) {
       pushAI('추천 리포트를 불러오지 못했어요.');
       return null;
     }
   };
-
   /* ---------- 설문 처음 질문 띄우기 ---------- */
   useEffect(() => {
     if (questions.length > 0 && qIndex === 0) {

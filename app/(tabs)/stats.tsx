@@ -1,12 +1,10 @@
 import GroupBarChart from '@/components/GroupBarChart';
 import { Colors } from '@/constants/colors';
+import * as SecureStore from 'expo-secure-store';
 import React, { useEffect, useState } from 'react';
 import { Dimensions, Image, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { LineChart } from 'react-native-gifted-charts';
 import { SafeAreaView } from 'react-native-safe-area-context';
-
-const token =
-  "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJIeWVyaW0ga2ltIiwic3ViIjoiMSIsImlhdCI6MTc2MDc2NjU4NCwiZXhwIjoxNzYxOTc2MTg0fQ.jpDSg5pGzaPgDQPqBjbK_oqfWvwpMf3wkaGpMGMHez4";
 
 const API_BASE_URL = "http://ing-default-financedocin-b81cf-108864784-1b9b414f3253.kr.lb.naverncp.com";
 
@@ -16,55 +14,56 @@ const IMG_ARROW_LEFT_CHOSEN = require('../../assets/images/ic_arrow_left_choose.
 const IMG_ARROW_RIGHT = require('../../assets/images/ic_arrow_right.png');
 const IMG_ARROW_RIGHT_CHOSEN = require('../../assets/images/ic_arrow_right_choose.png');
 
+const apiFetch = async (endpoint: string, options: RequestInit = {}) => {
+  try {
+    const token = await SecureStore.getItemAsync('accessToken');
+    const headers = {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...options.headers,
+    };
+
+    const res = await fetch(`${API_BASE_URL}${endpoint}`, { ...options, headers });
+
+    if (!res.ok) {
+      const errorText = await res.text();
+      throw new Error(errorText);
+    }
+
+    return await res.json();
+  } catch (err) {
+    throw err;
+  }
+};
 
 const fetchMonthlyExpense = async (year: number, month: number) => {
   try {
-    const res = await fetch(`${API_BASE_URL}/report/api/summary/report?year=${year}&month=${month}`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': token,
-      },
-    });
-    if (res.ok) {
-      const data = await res.json();
-            if (Array.isArray(data.last6Months)) {
-        return data; 
-      } else {
-        console.error("last6MonthsData is not an array:", data.last6Months);
-        return null; // 배열이 아닐 경우 null 반환
-      }
+    const data = await apiFetch(`/report/api/summary/report?year=${year}&month=${month}`, { method: 'GET' });
+
+    if (Array.isArray(data.last6Months)) {
+      return data;
     } else {
-      const errorText = await res.text();
-      console.error(`월 총 지출 조회 실패: ${res.status} - ${errorText}`);
+      console.error('last6Months 데이터가 배열이 아닙니다:', data.last6Months);
+      return null;
     }
   } catch (err) {
-    console.error("월 총 지출 API 호출 중 오류 발생:", err);
+    console.error('월 총 지출 API 호출 중 오류 발생:', err);
+    return null;
   }
-  return null; 
 };
 const fetchGoals = async () => {
   try {
-    const res = await fetch(`${API_BASE_URL}/report/api/goal`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': token,
-      },
-    });
-    const data = await res.json();
+    const data = await apiFetch('/report/api/goal', { method: 'GET' });
 
-    console.log("Expense Goal:", data.expenseGoal);
-    console.log("Income Goal:", data.incomeGoal);
+    console.log('Expense Goal:', data.expenseGoal);
+    console.log('Income Goal:', data.incomeGoal);
 
-    return data; 
-    
+    return data;
   } catch (err) {
-    console.error("목표 API 호출 중 오류 발생:", err);
+    console.error('목표 API 호출 중 오류 발생:', err);
+    return null;
   }
-  return null;
 };
-
 const LineChartComponent = ({ year, month }: { year: number, month: number }) => {
   const [chartData, setChartData] = useState<any[]>([]); // Chart 데이터를 저장할 상태
   const [labels, setLabels] = useState<string[]>([]); // X축 레이블 (월)

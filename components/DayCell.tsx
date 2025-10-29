@@ -61,7 +61,7 @@ const dayStyles = StyleSheet.create({
     marginBottom: 2,
   },
   today: { fontWeight: '700' },
-  income: { fontSize: 12, color: '#004DFF', lineHeight: 16 },
-  expense: { fontSize: 12, color: '#FF0004', lineHeight: 16 },
+  income: { fontSize: 10, color: '#004DFF', lineHeight: 16 },
+  expense: { fontSize: 10, color: '#FF0004', lineHeight: 16 },
 });
 export default DayCell; 

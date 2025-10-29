@@ -1,17 +1,38 @@
 import DayCell from '@/components/DayCell';
 import { Colors } from '@/constants/colors';
+import { useFocusEffect } from '@react-navigation/native';
 import * as d3 from "d3-shape";
 import { useRouter } from 'expo-router';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import * as SecureStore from 'expo-secure-store';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, Dimensions, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Calendar, LocaleConfig } from 'react-native-calendars';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { G, Line, Path, Text as SvgText } from "react-native-svg";
 
 const API_BASE_URL = 'http://ing-default-financedocin-b81cf-108864784-1b9b414f3253.kr.lb.naverncp.com';
-const token =
-    "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJIeWVyaW0ga2ltIiwic3ViIjoiMSIsImlhdCI6MTc2MDc2NjU4NCwiZXhwIjoxNzYxOTc2MTg0fQ.jpDSg5pGzaPgDQPqBjbK_oqfWvwpMf3wkaGpMGMHez4";
+const apiFetch = async (endpoint: string, options: RequestInit = {}) => {
+  try {
+    const token = await SecureStore.getItemAsync("accessToken");
 
+    const headers = {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...options.headers,
+    };
+
+    const res = await fetch(`${API_BASE_URL}${endpoint}`, { ...options, headers });
+
+    if (!res.ok) {
+      const errorText = await res.text();
+      throw new Error(errorText);
+    }
+
+    return await res.json();
+  } catch (err) {
+    throw err;
+  }
+};
 const screenWidth = Dimensions.get('window').width;
 LocaleConfig.locales['ko'] = {
   monthNames: [
@@ -27,40 +48,33 @@ LocaleConfig.locales['ko'] = {
 LocaleConfig.defaultLocale = 'ko';
 const today = new Date().toISOString().split('T')[0];
 type Ledger = Record<string, { income?: number; expense?: number }>;
-const fetchExpenseData = async (date: string): Promise<{ date: string, expense: number }> => {
+
+/* ---------- API ---------- */
+const fetchExpenseData = async (date: string) => {
   try {
-    const res = await fetch(
-      `${API_BASE_URL}/report/api/expense?date=${date}`,
-      {
-        headers: {
-          Authorization: token,
-        },
-      }
-    );
-    const data = await res.json();
-    const totalExpense = data?.totalExpense || 0;
-    return { date: date, expense: totalExpense };
+    const data = await apiFetch(`/report/api/expense?date=${date}`, { method: "GET" });
+    const totalExpense = Array.isArray(data)
+      ? data.reduce((sum, item) => sum + (item.amount || 0), 0)
+      : 0;
+
+    return { date, expense: totalExpense };
   } catch (err) {
     console.error(`[${date}] 지출 데이터 가져오기 실패:`, err);
-    return { date: date, expense: 0 };
+    return { date, expense: 0 };
   }
 };
-const fetchIncomeData = async (date: string): Promise<{ date: string, income: number }> => {
+
+const fetchIncomeData = async (date: string) => {
   try {
-    const res = await fetch(
-      `${API_BASE_URL}/report/api/income?date=${date}`,
-      {
-        headers: {
-          Authorization: token,
-        },
-      }
-    );
-    const data = await res.json();
-    const totalIncome = data?.totalIncome || 0;
-    return { date: date, income: totalIncome };
+    const data = await apiFetch(`/report/api/income?date=${date}`, { method: "GET" });
+    const totalIncome = Array.isArray(data)
+      ? data.reduce((sum, item) => sum + (item.amount || 0), 0)
+      : 0;
+
+    return { date, income: totalIncome };
   } catch (err) {
     console.error(`[${date}] 수입 데이터 가져오기 실패:`, err);
-    return { date: date, income: 0 };
+    return { date, income: 0 };
   }
 };
 
@@ -78,24 +92,11 @@ const getDaysInMonth = (dateString: string): string[] => {
 
 const fetchGoals = async () => {
   try {
-    const res = await fetch(`${API_BASE_URL}/report/api/goal`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': token,
-      },
-    });
-    if (res.ok) {
-      const data = await res.json();
-      return data; 
-    } else {
-      const errorText = await res.text();
-      console.error(`목표 금액 조회 실패: ${res.status} - ${errorText}`);
-    }
+    return await apiFetch(`/report/api/goal`, { method: "GET" });
   } catch (err) {
-    console.error("목표 금액 API 호출 중 오류 발생:", err);
+    console.error("목표 금액 조회 실패:", err);
+    return null;
   }
-  return null;
 };
 const applyIncomeGoal = async (
   savingInput: string,
@@ -110,26 +111,14 @@ const applyIncomeGoal = async (
   }
 
   try {
-    const res = await fetch(`${API_BASE_URL}/report/api/goal`, {
-      method: 'POST', // 목표 금액 저장 (또는 수정)
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': token,
-      },
-      body: JSON.stringify({
-        incomeGoal: goalAmount, // incomeGoal만 전송
-      }),
+    await apiFetch(`/report/api/goal`, {
+      method: "POST",
+      body: JSON.stringify({ incomeGoal: goalAmount }),
     });
-
-    if (res.ok) {
-      console.log(`저축 목표 금액 (${goalAmount}원) 설정 성공.`);
-      setSavingsSaves(goalAmount); 
-    } else {
-      const errorText = await res.text();
-      console.error(`저축 목표 설정 실패: ${res.status} - ${errorText}`);
-    }
+    console.log(`저축 목표 금액 (${goalAmount}원) 설정 성공`);
+    setSavingsSaves(goalAmount);
   } catch (err) {
-    console.error("저축 목표 API 호출 중 네트워크 오류 발생:", err);
+    console.error("저축 목표 API 오류:", err);
   }
 };
 
@@ -146,76 +135,46 @@ const applyExpenseGoal = async (
   }
 
   try {
-    const res = await fetch(`${API_BASE_URL}/report/api/goal`, {
-      method: 'POST', // 목표 금액 저장 (또는 수정)
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': token,
-      },
-      body: JSON.stringify({
-        expenseGoal: goalAmount, // expenseGoal만 전송
-      }),
+    await apiFetch(`/report/api/goal`, {
+      method: "POST",
+      body: JSON.stringify({ expenseGoal: goalAmount }),
     });
-
-    if (res.ok) {
-      console.log(`지출 목표 금액 (${goalAmount}원) 설정 성공.`);
-      setExpenseSaves(goalAmount); 
-    } else {
-      const errorText = await res.text();
-      console.error(`지출 목표 설정 실패: ${res.status} - ${errorText}`);
-    }
+    console.log(`지출 목표 금액 (${goalAmount}원) 설정 성공`);
+    setExpenseSaves(goalAmount);
   } catch (err) {
-    console.error("지출 목표 API 호출 중 네트워크 오류 발생:", err);
+    console.error("지출 목표 API 오류:", err);
   }
 };
 
 const fetchTotalExpense = async (year: number, month: number) => {
   try {
-    const res = await fetch(`${API_BASE_URL}/report/api/summary/month?year=${year}&month=${month}`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': token,
-      },
-    });
-
-    if (res.ok) {
-      const data = await res.json();
-      return data.totalExpense; // 총 지출 금액을 반환
-    } else {
-      const errorText = await res.text();
-      console.error(`총 지출 조회 실패: ${res.status} - ${errorText}`);
-    }
+    const data = await apiFetch(`/report/api/summary/month?year=${year}&month=${month}`, { method: "GET" });
+    return data.totalExpense || 0;
   } catch (err) {
-    console.error("총 지출 API 호출 중 오류 발생:", err);
+    console.error("총 지출 조회 실패:", err);
+    return null;
   }
-  return null;
 };
 const fetchCategoryExpenses = async (year: number, month: number) => {
   try {
-    const res = await fetch(`${API_BASE_URL}/report/api/summary/month?year=${year}&month=${month}`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': token,
-      },
-    });
-
-    if (res.ok) {
-      const data = await res.json();
-      return data.categoryExpenses; // 카테고리별 지출 합계 반환
-    } else {
-      const errorText = await res.text();
-      console.error(`카테고리별 지출 조회 실패: ${res.status} - ${errorText}`);
-    }
+    const data = await apiFetch(`/report/api/summary/month?year=${year}&month=${month}`, { method: "GET" });
+    return data.categoryExpenses || [];
   } catch (err) {
-    console.error("카테고리별 지출 API 호출 중 오류 발생:", err);
+    console.error("카테고리별 지출 조회 실패:", err);
+    return null;
   }
-  return null; 
+};
+const fetchCategoryRatios = async (year: number, month: number) => {
+  try {
+    const data = await apiFetch(`/report/api/categories/ratios?year=${year}&month=${month}`, { method: "GET" });
+    return data;
+  } catch (err) {
+    return null;
+  }
 };
 
+/* ---------- 기타 ---------- */
 const generatedColors: Set<string> = new Set();
-
 const getRandomColor = (): string => {
   let color: string;
 
@@ -227,7 +186,6 @@ const getRandomColor = (): string => {
 
   return color;
 };
-
 const PieChartComponent = ({ data }: { data: { name: string; value: number; color: string }[] }) => {
   const outerRadius = 115;
   const innerRadius = 40;
@@ -294,9 +252,10 @@ const PieChartComponent = ({ data }: { data: { name: string; value: number; colo
     </View>
   );
 };
-const ListItem = ({ name, amount }: { name: string; amount: number}) => (
+const ListItem = ({ name, amount, percent }: { name: string; amount: number; percent: number}) => (
   <View style={styles.listItem}>
     <View style={[styles.circle, { backgroundColor: Colors.mint }]} />  
+    <Text style={styles.percent}>{percent.toFixed(1)}%</Text>
     <Text style={styles.name}>{name}</Text>
     <Text style={styles.amount}>{amount.toLocaleString()} 원</Text>
   </View>
@@ -332,6 +291,7 @@ export default function Home() {
   const [incomeGoal, setIncomeGoal] = useState<number | null>(null);
   const [expenseGoal, setExpenseGoal] = useState<number | null>(null);
   const [categoryExpenses, setCategoryExpenses] = useState<any[]>([]); // 카테고리별 지출 합계 저장
+  const [categoryRatios, setCategoryRatios] = useState<any[]>([]);
 
   const [dayLedger, setDayLedger] = useState<Ledger>({}); 
   const currentMonth = today.substring(0, 7); 
@@ -366,23 +326,46 @@ export default function Home() {
           }
       });
       setDayLedger(newLedger);
-
     };
     if (index === 0) {
         loadMonthIncomeData();
     }
   }, [currentMonth, index]);
 
-  useEffect(() => {
-    const loadGoals = async () => {
-      const goals = await fetchGoals();
-      if (goals) {
-        setIncomeGoal(goals.incomeGoal);
-        setExpenseGoal(goals.expenseGoal);
-      }
-    };
-    loadGoals();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      const loadData = async () => {
+        try {
+          const goals = await fetchGoals();
+          if (goals) {
+            setIncomeGoal(goals.incomeGoal);
+            setExpenseGoal(goals.expenseGoal);
+            setSavingInput(goals.incomeGoal?.toString() || '');
+            setExpenseInput(goals.expenseGoal?.toString() || '');
+          }
+
+          const daysOfMonth = getDaysInMonth(today);
+          const [expenseResults, incomeResults] = await Promise.all([
+            Promise.all(daysOfMonth.map(fetchExpenseData)),
+            Promise.all(daysOfMonth.map(fetchIncomeData)),
+          ]);
+
+          const newLedger: Ledger = {};
+          daysOfMonth.forEach((date) => {
+            const expense = expenseResults.find((e) => e.date === date)?.expense || 0;
+            const income = incomeResults.find((i) => i.date === date)?.income || 0;
+            newLedger[date] = { income, expense };
+          });
+
+          setDayLedger(newLedger);
+        } catch (err) {
+          console.error('데이터 로딩 중 오류:', err);
+        }
+      };
+
+      loadData();
+    }, [])
+  );
 
   useEffect(() => {
     const loadTotalExpense = async () => {
@@ -401,6 +384,14 @@ export default function Home() {
     };
 
     loadCategoryExpenses();
+    
+    const loadCategoryRatios = async () => {
+      const data = await fetchCategoryRatios(year, month);
+      if (data) {
+        setCategoryRatios(data);
+      }
+    };
+    loadCategoryRatios();
   }, [year, month]); 
 
   const handleChangeSaving = (txt: string) => {
@@ -425,7 +416,8 @@ export default function Home() {
     value: item.amount,
     color: item.color || getRandomColor(), 
   })
-);
+  );
+  const totalAmount = categoryExpenses.reduce((sum, item) => sum + item.amount, 0);
 
   return (
   <SafeAreaView style={styles.container} edges={['bottom']}>
@@ -474,7 +466,10 @@ export default function Home() {
               {...props}
               ledger={dayLedger} 
               onPress={(date) => {
-                router.replace('/date');
+                router.push({
+                  pathname: '/date',
+                  params: { date: date.dateString }, 
+                });
               }}
             />
           )}
@@ -545,12 +540,21 @@ export default function Home() {
           />
         </View>
         <View>
+          
         <View style={{ marginTop: 5 }}>
-          {categoryExpenses.map((item, index) => (
-            <ListItem key={index} name={item.category} amount={item.amount}/>
-          ))}
-        </View>
-        </View>
+          {categoryExpenses.map((item, index) => {
+            const percent = totalAmount > 0 ? (item.amount / totalAmount) * 100 : 0;
+            return (
+              <ListItem
+                key={index}
+                name={item.category}
+                amount={item.amount}
+                percent={percent}
+              />
+              );
+              })}
+            </View>
+          </View>
       </ScrollView> 
     </View>
     </Animated.ScrollView>
@@ -573,7 +577,7 @@ const styles = StyleSheet.create({
   scrollContainer: { paddingBottom: 20 },
   listItem: { flexDirection: 'row', alignItems: 'center', marginTop: 15, marginLeft: 35, marginRight: 35 },
   circle: { width: 13, height: 13, marginStart: 15, borderRadius: 20 },
-  percent: { width: 50, fontSize: 16, color: Colors.black, marginRight: 12,},
+  percent: { width: 50, fontSize: 16, color: Colors.black, marginRight: 12, marginLeft: 7 },
   name: { fontSize: 16, flex: 1,color: Colors.black, fontWeight: 'bold', marginStart: 20, },
   amount: { fontSize: 16, color: '#333', fontWeight: 'bold', marginEnd: 20 },
   calendarpage: { width: screenWidth },

@@ -1,10 +1,34 @@
 import { Colors } from '@/constants/colors';
 import { Ionicons } from '@expo/vector-icons';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import React from 'react';
-import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useLocalSearchParams, useRouter, } from 'expo-router';
+import * as SecureStore from 'expo-secure-store';
+import React, { useEffect, useState } from 'react';
+import { FlatList, Pressable, StyleSheet, Text, View, } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+const API_BASE_URL = 'http://ing-default-financedocin-b81cf-108864784-1b9b414f3253.kr.lb.naverncp.com';
+const apiFetch = async (endpoint: string, options: RequestInit = {}) => {
+  try {
+    const token = await SecureStore.getItemAsync("accessToken");
+
+    const headers = {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...options.headers,
+    };
+
+    const res = await fetch(`${API_BASE_URL}${endpoint}`, { ...options, headers });
+
+    if (!res.ok) {
+      const errorText = await res.text();
+      throw new Error(errorText);
+    }
+
+    return await res.json();
+  } catch (err) {
+    throw err;
+  }
+};
 // 샘플 데이터
 type TransactionItem = {
   id: string;
@@ -12,44 +36,94 @@ type TransactionItem = {
   description: string;
   amount: number;
   type: 'income' | 'expense';
-  time: string;
+};
+type IncomeItem = {
+  id: number;
+  date: string;
+  amount: number;
+  description: string;
 };
 
-const sampleTransactions: TransactionItem[] = [
-  { id: '1', category: '생활용품', description: '바디워시', amount: 7800, type: 'expense', time: '18:45' },
-  { id: '2', category: '식비', description: '점심', amount: 12000, type: 'expense', time: '10:00' },
-  { id: '3', category: '교통/차량', description: '교통카드', amount: 55000, type: 'expense', time: '11:45' },
-  { id: '4', category: '수입', description: '급여', amount: 620145, type: 'income', time: '10:00' },
-  // ... 추가 내역
-];
+const fetchIncome = async (date: string) => {
+  try {
+    const data = await apiFetch(`/report/api/income?date=${date}`, { method: 'GET' });
+    console.log('수입 목록 조회 성공:', data);
+    return data;
+  } catch (err: any) {
+    console.error('수입 목록 조회 실패:');
+    console.log('에러 전체 내용:', JSON.stringify(err, Object.getOwnPropertyNames(err), 2));
+    return [];
+  }
+};
+const fetchExpense = async (date: string) => {
+  try {
+    const data = await apiFetch(`/report/api/expense?date=${date}`, { method: 'GET' });
+    console.log('소비 목록 조회 성공:', data);
+    return data;
+  } catch (err: any) {
+    console.error('소비 목록 조회 실패:');
+    console.log('에러 전체 내용:', JSON.stringify(err, Object.getOwnPropertyNames(err), 2));
+    return [];
+  }
+};
+const fetchIncomeList = async (date: string) => {
+  try {
+    const data = await apiFetch(`/report/api/income?date=${date}`, { method: 'GET' });
+    return Array.isArray(data) ? data : [];
+  } catch (err) {
+    console.error('수입 목록 조회 실패:', err);
+    return [];
+  }
+};
+
+const fetchExpenseList = async (date: string) => {
+  try {
+    const data = await apiFetch(`/report/api/expense?date=${date}`, { method: 'GET' });
+    return Array.isArray(data) ? data : [];
+  } catch (err) {
+    console.error('지출 목록 조회 실패:', err);
+    return [];
+  }
+};
 
 const formatMoney = (amount: number) => {
   return amount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 };
 
+const formatKoreanDate = (dateString: string) => {
+  const date = new Date(dateString);
+  const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
+  return `${date.getFullYear()}년 ${date.getMonth() + 1}월 ${date.getDate()}일 (${dayNames[date.getDay()]})`;
+};
+
 // 지출/수입 항목 렌더링 컴포넌트
-const TransactionListItem = ({ item }: { item: TransactionItem }) => {
-  const isIncome = item.type === 'income';
-  const sign = isIncome ? '+' : '-';
-  const color = isIncome ? '#A4A5FF' : '#FF4545';
+const TransactionItem = ({ item, type }: { item: any; type: 'income' | 'expense' }) => {
+  const color = type === 'income' ? '#004DFF' : '#E54B4B';
+  const sign = type === 'income' ? '+' : '-';
   const router = useRouter();
 
   const handlePress = () => {
-    // 항목을 눌렀을 때 change.tsx로 이동하며 기록 ID 전달
     router.push({
       pathname: '/change',
-      params: { recordId: item.id, type: item.type, amount: item.amount, description: item.description, category: item.category },
+      params: {
+        recordId: item.id,
+        type,
+        amount: item.amount,
+        description: item.description,
+        category: item.categoryName,
+      },
     });
   };
 
   return (
     <Pressable style={styles.transactionItem} onPress={handlePress}> 
       <View style={styles.transactionTextContainer}>
-        <Text style={styles.transactionCategory}>{item.category}</Text>
+        <Text style={styles.transactionCategory}>
+          {item.category || item.categoryName || ''}
+        </Text>
         <Text style={styles.transactionDescription}>{item.description}</Text>
       </View>
       <View style={styles.transactionAmountContainer}>
-        <Text style={styles.transactionTime}>{item.time}</Text>
         <Text style={[styles.transactionAmount, { color }]}>
           {sign} {formatMoney(item.amount)}원
         </Text>
@@ -61,20 +135,80 @@ const TransactionListItem = ({ item }: { item: TransactionItem }) => {
 export default function DateScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
-  const selectedDate = (params.date as string) || '2025년 8월 8일 금요일'; // 홈에서 넘겨받은 날짜 사용
-  
-  // 총 수입 및 지출 계산
-  const totalIncome = sampleTransactions
-    .filter(item => item.type === 'income')
-    .reduce((sum, item) => sum + item.amount, 0);
+  const selectedDate =
+  params.date && typeof params.date === 'string'
+    ? formatKoreanDate(params.date)
+    : '날짜를 선택하세요';
 
-  const totalExpense = sampleTransactions
-    .filter(item => item.type === 'expense')
-    .reduce((sum, item) => sum + item.amount, 0);
+  const [incomeList, setIncomeList] = useState<IncomeItem[]>([]);
+  const [expenseList, setExpenseList] = useState<IncomeItem[]>([]);
+
+  const [loading, setLoading] = useState(false);
+
+  const rawDate =
+    params.date && typeof params.date === 'string'
+      ? params.date
+      : new Date().toISOString().split('T')[0];
+  const dateParam = typeof params.date === 'string' ? params.date : new Date().toISOString().split('T')[0];
+
+  useEffect(() => {
+    const loadData = async () => {
+      if (!rawDate) return;
+      setLoading(true);
+      try {
+        const [incomeData, expenseData] = await Promise.all([
+          fetchIncome(rawDate),
+          fetchExpense(rawDate),
+        ]);
+
+        setIncomeList(incomeData || []);
+        setExpenseList(expenseData || []);
+      } catch (err) {
+        console.error("날짜별 내역 로드 실패:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadData();
+  }, [rawDate]);
+    useEffect(() => {
+    const loadLists = async () => {
+      try {
+        setLoading(true);
+        const [incomes, expenses] = await Promise.all([
+          fetchIncomeList(dateParam),
+          fetchExpenseList(dateParam),
+        ]);
+
+        setIncomeList(incomes);
+        setExpenseList(expenses);
+      } catch (err) {
+        console.error('내역 불러오기 실패:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadLists();
+  }, [dateParam]);
+
+  const totalIncome = incomeList.reduce((sum, item) => sum + item.amount, 0);
+  const totalExpense = expenseList.reduce((sum, item) => sum + item.amount, 0);
+  const combinedList = [
+    ...incomeList.map((i) => ({ ...i, type: 'income' })),
+    ...expenseList.map((e) => ({ ...e, type: 'expense' })),
+  ];
 
   return (
-    <SafeAreaView style={styles.container}>
-
+    <SafeAreaView style={[styles.container, { flex: 1 }]} edges={['top', 'bottom']}>
+      <View style={styles.header}>
+      <Pressable style={styles.backButton} onPress={() => router.back()}>
+        <Ionicons name="chevron-back" size={26} color="#333" />
+      </Pressable>
+      <Text style={styles.title}>날짜별 리스트</Text>
+            <View style={styles.placeholder} />
+    </View>
       {/* 날짜 및 요약 */}
       <View style={styles.summaryContainer}>
         <Text style={styles.dateText}>{selectedDate}</Text>
@@ -85,16 +219,17 @@ export default function DateScreen() {
       </View>
       
       {/* 내역 목록 (FlatList) */}
-      <FlatList
-        data={sampleTransactions.sort((a, b) => a.time.localeCompare(b.time))} // 시간 순으로 정렬
-        renderItem={({ item }) => <TransactionListItem item={item} />}
-        keyExtractor={item => item.id}
-        contentContainerStyle={styles.listContent}
-        ListEmptyComponent={() => (
-          <Text style={styles.emptyText}>이 날짜에 기록된 내역이 없습니다.</Text>
-        )}
-      />
-
+        <FlatList
+          data={combinedList}
+          keyExtractor={(item) => `${item.type}-${item.id}`}
+          renderItem={({ item }) => (
+            <TransactionItem item={item} type={item.type as 'income' | 'expense'} />
+          )}          ListEmptyComponent={() => (
+            <Text style={styles.emptyText}>이 날짜에 내역이 없습니다.</Text>
+          )}
+          contentContainerStyle={styles.listContent}
+          
+        />
       {/* '+ 버튼' (세 번째 화면으로 이동) */}
       <Pressable
         style={styles.addButton}
@@ -109,10 +244,9 @@ export default function DateScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.white,
-  },
+container: { backgroundColor: Colors.white,},
+  title: { fontSize: 20, fontWeight: '900', textAlign: 'center', },
+  scrollContainer: { paddingBottom: 20 },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -134,11 +268,12 @@ const styles = StyleSheet.create({
   },
   summaryContainer: {
     padding: 20,
+    backgroundColor: Colors.white
   },
   dateText: {
     fontSize: 20,
     fontWeight: 'bold',
-    marginBottom: 10,
+    marginBottom: 20,
   },
   amountBox: {
     flexDirection: 'row',
@@ -147,10 +282,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 15,
     borderRadius: 8,
     backgroundColor: '#f5f5f5',
+    alignItems: 'center',
   },
   incomeText: {
     fontSize: 16,
-    color: '#A4A5FF',
+    color: '#004DFF',
     fontWeight: '600',
   },
   expenseText: {
@@ -165,10 +301,11 @@ const styles = StyleSheet.create({
   transactionItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
     paddingVertical: 15,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: '#eee',
+    alignItems: 'center',
+    
   },
   transactionTextContainer: {
     flexDirection: 'row',
@@ -188,11 +325,7 @@ const styles = StyleSheet.create({
   },
   transactionAmountContainer: {
     alignItems: 'flex-end',
-  },
-  transactionTime: {
-    fontSize: 12,
-    color: '#888',
-    marginBottom: 2,
+    justifyContent: 'center',  
   },
   transactionAmount: {
     fontSize: 16,
@@ -206,16 +339,16 @@ const styles = StyleSheet.create({
   },
   addButton: {
     position: 'absolute',
-    right: 20,
-    bottom: 20,
+    right: 40,
+    bottom: 80,
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: '#A4A5FF', // 파란색 동그라미
+    backgroundColor: '#A4A5FF', 
     justifyContent: 'center',
     alignItems: 'center',
-    elevation: 4, // Android 그림자
-    shadowColor: '#000', // iOS 그림자
+    elevation: 4, 
+    shadowColor: '#000', 
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 3.84,

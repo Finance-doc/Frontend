@@ -15,6 +15,8 @@ export default function RootLayout() {
         <Stack>
           <Stack.Screen name="login" options={{ headerShown: false }} />
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          <Stack.Screen name="date" options={{ headerShown: false }} /> 
+          <Stack.Screen name="inputaccount" options={{ headerShown: false }} /> 
         </Stack>
       <StatusBar style="dark" hidden={false} translucent={false} />
     </SafeAreaProvider>
