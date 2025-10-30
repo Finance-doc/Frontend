@@ -34,7 +34,10 @@ const fetchCategories = async () => {
   try {
     const data = await apiFetch(`/report/api/categories`, { method: 'GET' });
       if (Array.isArray(data)) {
-        return data.map((item: any) => item.name);
+        return data.map((item: any) => ({
+          id: item.id,
+          name: item.name,
+        }));
       }
       return [];
   } catch (err) {
@@ -42,12 +45,17 @@ const fetchCategories = async () => {
     return [];
   }
 };
+type Category = {
+  id: number;
+  name: string;
+};
+
 
 export default function CategoryScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
-  const [userCategories, setUserCategories] = useState<string[]>([]);  
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [userCategories, setUserCategories] = useState<Category[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
   const [loading, setLoading] = useState(true); 
   useEffect(() => {
     const loadCategories = async () => {
@@ -61,38 +69,55 @@ export default function CategoryScreen() {
 
   useEffect(() => {
     if (params.newCategory && typeof params.newCategory === 'string') {
-      const newCat = params.newCategory;
-      if (!userCategories.includes(newCat)) {
-        setUserCategories(prev => [...prev, newCat]);
-        setSelectedCategory(newCat); // 새로 추가된 항목을 바로 선택
+      const newCatName = params.newCategory.trim();
+
+      const exists = userCategories.some(cat => cat.name === newCatName);
+
+      if (!exists) {
+        const newCategory: Category = {
+          id: Date.now(),
+          name: newCatName,
+        };
+
+        setUserCategories(prev => [...prev, newCategory]);
+        setSelectedCategory(newCategory); 
       }
+
       router.setParams({ newCategory: undefined });
     }
-  }, [params.newCategory]);
+  }, [params.newCategory, userCategories]);
 
-  const handleSelectCategory = (cat: string) => {
+  const handleSelectCategory = (cat: Category) => {
     setSelectedCategory(cat);
   };
-  
+
   const handleConfirm = () => {
     if (selectedCategory) {
       router.navigate({
-        pathname: '/input', // 돌아갈 화면 경로
-        params: { selectedCategory: selectedCategory },
+        pathname: '/input',
+        params: { 
+          selectedCategoryId: selectedCategory.id.toString(), 
+          selectedCategoryName: selectedCategory.name,      
+          date: params.date, 
+        },
       });
     } else {
-      router.back(); // 선택 없으면 그냥 돌아가기
+      router.navigate({
+        pathname: '/input',
+        params: { date: params.date }, 
+      });
     }
   };
-
-  const renderCategoryItem = ({ item }: { item: string }) => {
-    const isSelected = item === selectedCategory;
+  const renderCategoryItem = ({ item }: { item: Category }) => {
+    const isSelected = item.id === selectedCategory?.id;
     return (
       <Pressable
         style={[styles.categoryTag, isSelected && styles.categoryTagActive]}
         onPress={() => handleSelectCategory(item)}
       >
-        <Text style={[styles.categoryText, isSelected && styles.categoryTextActive]}>{item}</Text>
+        <Text style={[styles.categoryText, isSelected && styles.categoryTextActive]}>
+          {item.name}
+        </Text>
       </Pressable>
     );
   };
@@ -109,15 +134,20 @@ export default function CategoryScreen() {
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.categoryGrid}>
-        {userCategories.map((cat) => (
-          <React.Fragment key={cat}> 
-            {renderCategoryItem({ item: cat })}
-          </React.Fragment>
-          ))}          
+          {userCategories.map((cat) => (
+            <React.Fragment key={cat.id}>
+              {renderCategoryItem({ item: cat })}
+            </React.Fragment>
+          ))}
           {/* 카테고리 추가 버튼 */}
           <Pressable
             style={styles.addCategoryButton}
-            onPress={() => router.push('/categoryinput')} // categoryinput.tsx로 이동
+            onPress={() =>
+              router.push({
+                pathname: '/categoryinput',
+                params: { date: params.date },
+              })
+            }
           >
             <Ionicons name="add" size={24} color="#7A7BE6" />
           </Pressable>

@@ -1,7 +1,7 @@
 //categoryinput.tsx
 import { Colors } from '@/constants/colors';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import React, { useState } from 'react';
 import { Alert, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
@@ -47,7 +47,7 @@ const addCategory = async (categoryName: string) => {
 export default function CategoryInputScreen() {
   const router = useRouter();
   const [newCategoryName, setNewCategoryName] = useState('');
-
+  const params = useLocalSearchParams(); 
   const handleAddCategory = async () => {
     if (!newCategoryName.trim()) {
       Alert.alert('입력 오류', '카테고리명을 입력해주세요.');
@@ -63,8 +63,12 @@ export default function CategoryInputScreen() {
 
       router.navigate({
         pathname: '/category',
-        params: { newCategory: newCategoryName.trim() },
+        params: { 
+          newCategory: newCategoryName.trim(),
+          date: params.date, 
+        },
       });
+
     } catch (err) {
       Alert.alert('오류', '카테고리 추가 중 문제가 발생했습니다.');
     }

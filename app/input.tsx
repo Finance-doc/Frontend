@@ -1,35 +1,46 @@
 import { Colors } from '@/constants/colors';
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
-import {
-  Alert,
-  Dimensions,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import * as SecureStore from 'expo-secure-store';
+import React, { useCallback, useState } from 'react';
+import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-const token =
-  "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJIeWVyaW0ga2ltIiwic3ViIjoiMSIsImlhdCI6MTc2MDc2NjU4NCwiZXhwIjoxNzYxOTc2MTg0fQ.jpDSg5pGzaPgDQPqBjbK_oqfWvwpMf3wkaGpMGMHez4";
+const API_BASE_URL = 'http://ing-default-financedocin-b81cf-108864784-1b9b414f3253.kr.lb.naverncp.com';
+const apiFetch = async (endpoint: string, options: RequestInit = {}) => {
+  try {
+    const token = await SecureStore.getItemAsync("accessToken");
 
-const API_BASE_URL = "http://ing-default-financedocin-b81cf-108864784-1b9b414f3253.kr.lb.naverncp.com";
+    const headers = {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...options.headers,
+    };
 
-const screenWidth = Dimensions.get('window').width;
+    const res = await fetch(`${API_BASE_URL}${endpoint}`, { ...options, headers });
 
-// 숫자 입력 시 콤마 추가
+    if (!res.ok) {
+      const errorText = await res.text();
+      throw new Error(errorText);
+    }
+
+    return await res.json();
+  } catch (err) {
+    throw err;
+  }
+};
+
 const formatWithCommas = (s: string) => {
   const digits = s.replace(/[^\d]/g, '');
   return digits.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 };
+const formatKoreanDate = (dateString: string) => {
+  if (!dateString) return '';
+  const [year, month, day] = dateString.split('-');
+  return `${year}년 ${month}월 ${day}일`;
+};
 
-// 공통 API 금액 등록 함수
 const postFinanceData = async (
   type: 'income' | 'expense' | 'saving',
   body: any
@@ -41,28 +52,16 @@ const postFinanceData = async (
   if (type === 'saving') endpoint = '/report/api/saving';
 
   try {
-    const res = await fetch(`${API_BASE_URL}${endpoint}`, {
+    const data = await apiFetch(endpoint, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': token,
-      },
       body: JSON.stringify(body),
     });
 
-    if (!res.ok) {
-      const errorText = await res.text();
-      console.error(`${type} 등록 실패: ${res.status} - ${errorText}`);
-      Alert.alert('등록 실패', errorText);
-      return null;
-    }
-
-    const data = await res.json();
     console.log(`${type} 등록 성공:`, data);
     return data;
-  } catch (err) {
+  } catch (err: any) {
     console.error(`🚨 ${type} 등록 중 오류 발생:`, err);
-    Alert.alert('네트워크 오류', '서버 통신 중 문제가 발생했습니다.');
+    Alert.alert('등록 실패', err.message || '서버 통신 중 문제가 발생했습니다.');
     return null;
   }
 };
@@ -72,18 +71,33 @@ export default function InputScreen() {
   const params = useLocalSearchParams();
 
   const [type, setType] = useState<'income' | 'expense' | 'saving'>('income');
-  const [category, setCategory] = useState<string>('카테고리 추가');
+  const [category, setCategory] = useState<{ id: number | null; name: string }>({
+    id: null,
+    name: '카테고리 추가',
+  });
   const [date, setDate] = useState<string>('');
+  const [displayDate, setDisplayDate] = useState<string>(''); 
   const [amountInput, setAmountInput] = useState<string>('');
   const [description, setDescription] = useState<string>('');
 
-  //  category.tsx에서 선택된 카테고리를 받아옴
-  useEffect(() => {
-    if (params.selectedCategory && typeof params.selectedCategory === 'string') {
-      setCategory(params.selectedCategory);
-      router.setParams({ selectedCategory: undefined }); // 중복 방지
-    }
-  }, [params.selectedCategory]);
+  useFocusEffect(
+    useCallback(() => {
+      if (params.date && typeof params.date === 'string') {
+        setDate(params.date);
+        setDisplayDate(formatKoreanDate(params.date));
+      }
+
+      if (
+        typeof params.selectedCategoryId === 'string' &&
+        typeof params.selectedCategoryName === 'string'
+      ) {
+        setCategory({
+          id: Number(params.selectedCategoryId),
+          name: params.selectedCategoryName,
+        });
+      }
+    }, [params.date, params.selectedCategoryId, params.selectedCategoryName])
+  );
 
   const handleChangeAmount = (txt: string) => {
     setAmountInput(formatWithCommas(txt));
@@ -105,7 +119,11 @@ export default function InputScreen() {
     };
 
     if (type === 'expense') {
-      payload.category = category;
+      if (!category.id) {
+        Alert.alert('입력 오류', '카테고리를 선택하세요.');
+        return;
+      }
+      payload.categoryId = category.id; 
     }
 
     const result = await postFinanceData(type, payload);
@@ -170,11 +188,17 @@ export default function InputScreen() {
                 onPress={() =>
                   router.push({
                     pathname: '/category',
-                    params: { currentCategory: category },
+                    params: {
+                      currentCategoryId: category.id ? category.id.toString() : '',
+                      currentCategoryName: category.name,
+                      date,
+                    },
                   })
                 }
               >
-                <Text style={styles.categoryText}>{category}</Text>
+                <Text style={styles.categoryText}>
+                  {category.name || '카테고리 선택'}
+                </Text>
               </Pressable>
             </View>
           )}
@@ -182,7 +206,7 @@ export default function InputScreen() {
           {/* 날짜 */}
           <View style={styles.row}>
             <Text style={styles.label}>날짜</Text>
-            <Text style={styles.dateText}>{date}</Text>
+            <Text style={styles.dateText}>{displayDate}</Text>
           </View>
 
           {/* 금액 */}

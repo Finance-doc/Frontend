@@ -297,7 +297,7 @@ useEffect(() => {
             <TouchableOpacity onPress={handlePress}>
               <Image
                 source={require('../../assets/images/ic_question.png')}
-                style={styles.questionbox}
+                style={[styles.questionbox, { opacity: 0 }]} 
               />
             </TouchableOpacity>
             {isVisible && (

@@ -75,6 +75,17 @@ const fetchIncomeList = async (date: string) => {
     return [];
   }
 };
+const fetchSaving = async (date: string) => {
+  try {
+    const [year, month] = date.split('-'); // "2025", "10"
+    const data = await apiFetch(`/report/api/saving?year=${year}&month=${month}`, { method: 'GET' });
+    console.log(`저축 목록 조회 성공 (${year}-${month}):`, data);
+    return Array.isArray(data) ? data : [];
+  } catch (err: any) {
+    console.error('저축 목록 조회 실패:', err);
+    return [];
+  }
+};
 
 const fetchExpenseList = async (date: string) => {
   try {
@@ -98,26 +109,21 @@ const formatKoreanDate = (dateString: string) => {
 
 // 지출/수입 항목 렌더링 컴포넌트
 const TransactionItem = ({ item, type }: { item: any; type: 'income' | 'expense' }) => {
-  const color = type === 'income' ? '#004DFF' : '#FF0004';
-  const sign = type === 'income' ? '+' : '-';
-  const router = useRouter();
+  const color =
+    type === 'income'
+      ? '#004DFF'
+      : type === 'expense'
+      ? '#FF0004'
+      : '#009688'; 
 
-  const handlePress = () => {
-    router.push({
-      pathname: '/change',
-      params: {
-        recordId: item.id,
-        type,
-        amount: item.amount,
-        description: item.description,
-        category: item.categoryName,
-        date: item.date, 
-      },
-    });
-  };
-
+  const sign =
+    type === 'income'
+      ? '+'
+      : type === 'expense'
+      ? '-'
+      : '💰';
   return (
-    <Pressable style={styles.transactionItem} onPress={handlePress}> 
+    <Pressable style={styles.transactionItem} > 
       <View style={styles.transactionTextContainer}>
         <Text style={styles.transactionCategory}>
           {item.category || item.categoryName || ''}
@@ -143,6 +149,7 @@ export default function DateScreen() {
 
   const [incomeList, setIncomeList] = useState<IncomeItem[]>([]);
   const [expenseList, setExpenseList] = useState<IncomeItem[]>([]);
+  const [savingList, setSavingList] = useState<IncomeItem[]>([]);
 
   const [loading, setLoading] = useState(false);
 
@@ -157,13 +164,18 @@ export default function DateScreen() {
       if (!rawDate) return;
       setLoading(true);
       try {
-        const [incomeData, expenseData] = await Promise.all([
+        const [incomeData, expenseData, savingData] = await Promise.all([
           fetchIncome(rawDate),
           fetchExpense(rawDate),
+          fetchSaving(rawDate),
         ]);
 
+      const filteredSaving = savingData.filter(
+        (item: any) => item.date === rawDate
+      );
         setIncomeList(incomeData || []);
         setExpenseList(expenseData || []);
+        setSavingList(filteredSaving  || []); 
       } catch (err) {
         console.error("날짜별 내역 로드 실패:", err);
       } finally {
@@ -199,6 +211,7 @@ export default function DateScreen() {
   const combinedList = [
     ...incomeList.map((i) => ({ ...i, type: 'income' })),
     ...expenseList.map((e) => ({ ...e, type: 'expense' })),
+    ...savingList.map((s) => ({ ...s, type: 'saving' })),
   ];
 
   return (
@@ -232,17 +245,18 @@ export default function DateScreen() {
           
         />
       {/* '+ 버튼' (세 번째 화면으로 이동) */}
-      <Pressable
-        style={styles.addButton}
-        onPress={() => 
-          router.push({ pathname: '/input' }) // 객체 형태로 수정
-      } // 입력 화면으로 이동
-      >
-        <Ionicons name="add" size={32} color="white" />
-      </Pressable>
-    </SafeAreaView>
-  );
-}
+    <Pressable
+      style={styles.addButton}
+      onPress={() => 
+        router.push({ pathname: '/input', params: { date: rawDate } }) 
+      }
+    >
+      <Ionicons name="add" size={32} color="white" />
+    </Pressable>
+
+        </SafeAreaView>
+      );
+    }
 
 const styles = StyleSheet.create({
 container: { backgroundColor: Colors.white,},

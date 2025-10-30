@@ -297,33 +297,32 @@ export default function Home() {
   const currentMonth = today.substring(0, 7); 
   const year = parseInt(currentMonth.substring(0, 4)); 
   const month = parseInt(currentMonth.substring(5, 7)); 
+  const [selectedMonth, setSelectedMonth] = useState(currentMonth); // "2025-10" 등
 
-  useEffect(() => {
-    if (index !== 0) return;
+  useFocusEffect(
+    useCallback(() => {
+      const loadStatsData = async () => {
+        const [expense, expenses, ratios] = await Promise.all([
+          fetchTotalExpense(year, month),
+          fetchCategoryExpenses(year, month),
+          fetchCategoryRatios(year, month),
+        ]);        
+        if (expense !== null) {
+          setTotalExpense(expense);
+        }
 
-    const loadMonthData = async () => {
-      const daysOfMonth = getDaysInMonth(today);
+        if (expenses !== null) {
+          setCategoryExpenses(expenses);
+        }
+        if (ratios) {
+          setCategoryRatios(ratios);
+          }
+        };
 
-      // 한꺼번에 데이터 요청
-      const [expenseResults, incomeResults] = await Promise.all([
-        Promise.all(daysOfMonth.map(fetchExpenseData)),
-        Promise.all(daysOfMonth.map(fetchIncomeData)),
-      ]);
+        loadStatsData();
 
-      const newLedger: Ledger = {};
-
-      daysOfMonth.forEach((date) => {
-        const expense = expenseResults.find((e) => e.date === date)?.expense || 0;
-        const income = incomeResults.find((i) => i.date === date)?.income || 0;
-        newLedger[date] = { income, expense };
-      });
-
-      setDayLedger(newLedger);
-    };
-
-    loadMonthData();
-  }, [currentMonth, index]);
-
+    }, [year, month]) 
+);
   useFocusEffect(
     useCallback(() => {
       const loadData = async () => {
@@ -358,6 +357,31 @@ export default function Home() {
       loadData();
     }, [])
   );
+  useEffect(() => {
+    const loadMonthLedger = async () => {
+      try {
+        const daysOfMonth = getDaysInMonth(selectedMonth);
+
+        const [expenseResults, incomeResults] = await Promise.all([
+          Promise.all(daysOfMonth.map(fetchExpenseData)),
+          Promise.all(daysOfMonth.map(fetchIncomeData)),
+        ]);
+
+        const newLedger: Ledger = {};
+        daysOfMonth.forEach((date) => {
+          const expense = expenseResults.find((e) => e.date === date)?.expense || 0;
+          const income = incomeResults.find((i) => i.date === date)?.income || 0;
+          newLedger[date] = { income, expense };
+        });
+
+        setDayLedger(newLedger); 
+      } catch (err) {
+        console.error('월별 데이터 로딩 중 오류:', err);
+      }
+    };
+
+    loadMonthLedger();
+  }, [selectedMonth]);
 
   useEffect(() => {
     const loadTotalExpense = async () => {
@@ -451,8 +475,12 @@ export default function Home() {
     <ScrollView>
       <View style={styles.calendarpage}>
         <Calendar
-          current={today}
+          current={currentMonth + '-01'}
           monthFormat="yyyy년 M월"
+          onMonthChange={(monthDate) => {
+          const newMonth = monthDate.dateString.substring(0, 7); // 예: "2025-11"
+          setSelectedMonth(newMonth); // ✅ 선택된 월 갱신
+          }}
           dayComponent={(props: any) => (
             <DayCell
               {...props}
