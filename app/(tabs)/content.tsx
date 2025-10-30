@@ -29,7 +29,10 @@ const apiFetch = async (endpoint: string, options: RequestInit = {}) => {
       ...options.headers,
     };
 
-    const res = await fetch(`${API_BASE_URL}${endpoint}`, { ...options, headers });
+    const res = await fetch(`/api${endpoint}`, {
+      ...options,
+      headers,
+    });
 
     if (!res.ok) {
       const errorText = await res.text();
@@ -41,8 +44,6 @@ const apiFetch = async (endpoint: string, options: RequestInit = {}) => {
     throw err;
   }
 };
-const API_BASE_URL =
-  'http://ing-default-financedocin-b81cf-108864784-1b9b414f3253.kr.lb.naverncp.com';
 
 export default function Content() {
   const [keyword, setKeyword] = useState<Keyword | null>(null);

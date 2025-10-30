@@ -7,13 +7,12 @@ import { Dimensions, Image, Pressable, ScrollView, StyleSheet, Text, TouchableOp
 import { LineChart } from 'react-native-gifted-charts';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-const API_BASE_URL = "http://ing-default-financedocin-b81cf-108864784-1b9b414f3253.kr.lb.naverncp.com";
-
 const screenWidth = Dimensions.get('window').width;
 const IMG_ARROW_LEFT = require('../../assets/images/ic_arrow_left.png');
 const IMG_ARROW_LEFT_CHOSEN = require('../../assets/images/ic_arrow_left_choose.png');
 const IMG_ARROW_RIGHT = require('../../assets/images/ic_arrow_right.png');
 const IMG_ARROW_RIGHT_CHOSEN = require('../../assets/images/ic_arrow_right_choose.png');
+const screenHeight = Dimensions.get('window').height;
 
 const apiFetch = async (endpoint: string, options: RequestInit = {}) => {
   try {
@@ -24,8 +23,10 @@ const apiFetch = async (endpoint: string, options: RequestInit = {}) => {
       ...options.headers,
     };
 
-    const res = await fetch(`${API_BASE_URL}${endpoint}`, { ...options, headers });
-
+    const res = await fetch(`/api${endpoint}`, {
+      ...options,
+      headers,
+    });
     if (!res.ok) {
       const errorText = await res.text();
       throw new Error(errorText);
@@ -232,8 +233,10 @@ useEffect(() => {
               />
           </Pressable>
         </View>
-      <ScrollView contentContainerStyle={styles.scrollContainer}>
-
+        <ScrollView 
+          contentContainerStyle={styles.scrollContainer}
+          showsVerticalScrollIndicator={false}
+        >
         {/* 첫 번째 분석 */}      
         <View style={styles.totalExpense}>
           <Text style={styles.analysis}>
@@ -325,9 +328,16 @@ useEffect(() => {
 }
 
 const styles = StyleSheet.create({
-  container: { backgroundColor: Colors.white,},
-  title: { fontSize: 20, fontWeight: '900', textAlign: 'center', borderBottomWidth: StyleSheet.hairlineWidth, paddingTop: 13, paddingBottom: 13,},
-  scrollContainer: { paddingBottom: 20 },
+  container: { 
+    flex: 1,
+    height: screenHeight,         
+    backgroundColor: Colors.white,
+  },  
+title: { fontSize: 20, fontWeight: '900', textAlign: 'center', borderBottomWidth: StyleSheet.hairlineWidth, paddingTop: 13, paddingBottom: 13,},
+  scrollContainer: {
+    flexGrow: 1,
+    paddingBottom: 40,
+  },  
   totalExpense: {marginBottom: 50},
   month: {fontSize: 19, fontWeight: 'bold', borderBottomWidth: StyleSheet.hairlineWidth, paddingTop:10, paddingBottom: 10, },
   analysis: {fontSize: 19, fontWeight: 'bold', paddingTop: 40, marginStart: 20, },

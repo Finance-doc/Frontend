@@ -7,7 +7,7 @@ import { getItem } from '@/hooks/storage';
 import React, { useCallback, useState } from 'react';
 import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-const API_BASE_URL = 'http://ing-default-financedocin-b81cf-108864784-1b9b414f3253.kr.lb.naverncp.com';
+
 const apiFetch = async (endpoint: string, options: RequestInit = {}) => {
   try {
     const token = await getItem("accessToken");
@@ -17,8 +17,10 @@ const apiFetch = async (endpoint: string, options: RequestInit = {}) => {
       ...options.headers,
     };
 
-    const res = await fetch(`${API_BASE_URL}${endpoint}`, { ...options, headers });
-
+    const res = await fetch(`/api${endpoint}`, {
+      ...options,
+      headers,
+    });    
     if (!res.ok) {
       const errorText = await res.text();
       throw new Error(errorText);

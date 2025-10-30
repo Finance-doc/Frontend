@@ -1,0 +1,11 @@
+# API 프록시 설정
+[[redirects]]
+  from = "/api/*"
+  to = "http://ing-default-financedocin-b81cf-108864784-1b9b414f3253.kr.lb.naverncp.com/:splat"
+  status = 200
+
+# SPA 라우팅 (expo-router, react-router 등)
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

@@ -11,7 +11,8 @@ import { Calendar, LocaleConfig } from 'react-native-calendars';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { G, Line, Path, Text as SvgText } from "react-native-svg";
 
-const API_BASE_URL = 'http://ing-default-financedocin-b81cf-108864784-1b9b414f3253.kr.lb.naverncp.com';
+const screenHeight = Dimensions.get('window').height;
+
 const apiFetch = async (endpoint: string, options: RequestInit = {}) => {
   try {
     const token = await getItem("accessToken");
@@ -22,8 +23,10 @@ const apiFetch = async (endpoint: string, options: RequestInit = {}) => {
       ...options.headers,
     };
 
-    const res = await fetch(`${API_BASE_URL}${endpoint}`, { ...options, headers });
-
+    const res = await fetch(`/api${endpoint}`, {
+      ...options,
+      headers,
+    });    
     if (!res.ok) {
       const errorText = await res.text();
       throw new Error(errorText);
@@ -584,7 +587,11 @@ export default function Home() {
 }
 
 const styles = StyleSheet.create({
-  container: { backgroundColor: Colors.white,},
+  container: { 
+    flex: 1,
+    height: screenHeight,         
+    backgroundColor: Colors.white,
+  },    
   title: { fontSize: 20, fontWeight: '900', textAlign: 'center', borderBottomWidth: StyleSheet.hairlineWidth, paddingTop:15, paddingBottom: 15,},
   tabBar: { flexDirection: 'row', position: 'relative',borderBottomWidth: StyleSheet.hairlineWidth,},
   tabBarInHeader: { flexDirection: 'row', position: 'relative',},
@@ -595,7 +602,10 @@ const styles = StyleSheet.create({
   page: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   pageTitle: { fontSize: 18, fontWeight: '700' },
   chartContainer: { marginTop: 20, alignItems: 'center', justifyContent: 'center', position: 'relative', },
-  scrollContainer: { paddingBottom: 20 },
+  scrollContainer: {
+    flexGrow: 1,
+    paddingBottom: 40,
+  },  
   listItem: { flexDirection: 'row', alignItems: 'center', marginTop: 15, marginLeft: 35, marginRight: 35 },
   circle: { width: 13, height: 13, marginStart: 15, borderRadius: 20 },
   percent: { width: 50, fontSize: 16, color: Colors.black, marginRight: 12, marginLeft: 7 },

@@ -23,7 +23,7 @@ export default function InputAccount() {
     try {
       setLoading(true);
 
-      const res = await fetch(`${API_BASE_URL}/user/test/login`, {
+      const res = await fetch(`/api/user/test/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

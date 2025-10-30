@@ -5,10 +5,11 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 // import * as SecureStore from 'expo-secure-store';
 import { getItem } from '@/hooks/storage';
 import React, { useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Dimensions, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-const API_BASE_URL = 'http://ing-default-financedocin-b81cf-108864784-1b9b414f3253.kr.lb.naverncp.com';
+const screenHeight = Dimensions.get('window').height;
+
 const apiFetch = async (endpoint: string, options: RequestInit = {}) => {
   try {
     const token = await getItem("accessToken");
@@ -19,8 +20,10 @@ const apiFetch = async (endpoint: string, options: RequestInit = {}) => {
       ...options.headers,
     };
 
-    const res = await fetch(`${API_BASE_URL}${endpoint}`, { ...options, headers });
-
+    const res = await fetch(`/api${endpoint}`, {
+      ...options,
+      headers,
+    });
     if (!res.ok) {
       const errorText = await res.text();
       throw new Error(errorText);
@@ -133,8 +136,11 @@ export default function CategoryScreen() {
         <View style={styles.placeholder} />
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        <View style={styles.categoryGrid}>
+      <ScrollView 
+        contentContainerStyle={styles.scrollContainer}
+        showsVerticalScrollIndicator={false}
+      >        
+      <View style={styles.categoryGrid}>
           {userCategories.map((cat) => (
             <React.Fragment key={cat.id}>
               {renderCategoryItem({ item: cat })}
@@ -169,7 +175,11 @@ export default function CategoryScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.white, },
+  container: { 
+    flex: 1,
+    height: screenHeight,         
+    backgroundColor: Colors.white,
+  },  
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -182,8 +192,10 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: 18, fontWeight: 'bold', },
   backButton: { padding: 5, },
   placeholder: { width: 34, },
-  scrollContent: { padding: 20, },
-  
+  scrollContainer: {
+    flexGrow: 1,
+    paddingBottom: 40,
+  },    
   categoryGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -199,7 +211,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center', 
   },
   categoryTagActive: {
-    backgroundColor: '#A4A5FF', // 이미지의 보라색 계열
+    backgroundColor: '#A4A5FF', 
   },
   categoryText: {
     fontSize: 15,

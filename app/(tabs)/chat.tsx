@@ -24,9 +24,6 @@ type QuestionResponse = {
 };
 
 /* ---------- API ---------- */
-const API_BASE_URL =
-  'http://ing-default-financedocin-b81cf-108864784-1b9b414f3253.kr.lb.naverncp.com';
-
 /**
  * 통합 API Fetch 함수
  * - 자동 토큰 추가
@@ -36,7 +33,7 @@ const API_BASE_URL =
 const apiFetch = async (endpoint: string, options: RequestInit = {}) => {
   try {
     const token = await getItem("accessToken");
-    if (!token) console.warn('⚠️ No access token found in SecureStore');
+    if (!token) console.warn('No access token found in SecureStore');
 
     const headers = {
       'Content-Type': 'application/json',
@@ -44,23 +41,24 @@ const apiFetch = async (endpoint: string, options: RequestInit = {}) => {
       ...options.headers,
     };
 
-    const res = await fetch(`${API_BASE_URL}${endpoint}`, { ...options, headers });
+    const res = await fetch(`/api${endpoint}`, {
+      ...options,
+      headers,
+    });
 
     if (!res.ok) {
       const errorText = await res.text();
-      console.error(`❌ API Error [${endpoint}]`, errorText);
+      console.error(`API Error [${endpoint}]`, errorText);
       throw new Error(errorText);
     }
 
-    // ✅ ai-report는 text로 처리
     if (endpoint.includes('/recommend/ai-report')) {
       return await res.text();
     }
 
-    // ✅ 나머지는 JSON으로 처리
     return await res.json();
   } catch (err) {
-    console.error(`🚨 Fetch failed [${endpoint}]:`, err);
+    console.error(`Fetch failed [${endpoint}]:`, err);
     throw err;
   }
 };
