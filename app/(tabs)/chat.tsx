@@ -26,12 +26,20 @@ type QuestionResponse = {
 /* ---------- API ---------- */
 const API_BASE_URL =
   'http://ing-default-financedocin-b81cf-108864784-1b9b414f3253.kr.lb.naverncp.com';
+
+/**
+ * 통합 API Fetch 함수
+ * - 자동 토큰 추가
+ * - ai-report일 경우 text 응답으로 처리
+ * - 에러 로그 강화
+ */
 const apiFetch = async (endpoint: string, options: RequestInit = {}) => {
   try {
-    const token = await SecureStore.getItemAsync("accessToken");
+    const token = await SecureStore.getItemAsync('accessToken');
+    if (!token) console.warn('⚠️ No access token found in SecureStore');
 
     const headers = {
-      "Content-Type": "application/json",
+      'Content-Type': 'application/json',
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...options.headers,
     };
@@ -40,21 +48,30 @@ const apiFetch = async (endpoint: string, options: RequestInit = {}) => {
 
     if (!res.ok) {
       const errorText = await res.text();
+      console.error(`❌ API Error [${endpoint}]`, errorText);
       throw new Error(errorText);
     }
 
+    // ✅ ai-report는 text로 처리
+    if (endpoint.includes('/recommend/ai-report')) {
+      return await res.text();
+    }
+
+    // ✅ 나머지는 JSON으로 처리
     return await res.json();
   } catch (err) {
+    console.error(`🚨 Fetch failed [${endpoint}]:`, err);
     throw err;
   }
 };
-/* ---------- Recommend Options (순차 질문) ---------- */
+
+/* ---------- Recommend Options ---------- */
 const INCOME_OPTS = ['200만원 이하', '300만원', '400만원', '500만원 이상'];
 const SAVING_OPTS = ['5%', '10%', '15%', '20% 이상'];
 const INTEREST_OPTS = ['목돈 마련', '공격 투자', '내 집 마련'];
 
 /* 추천 질문 단계 */
-type RecStep = 0 | 1 | 2 | 3 | 4; // 0: off, 1: income, 2: saving, 3: interest, 4: posting
+type RecStep = 0 | 1 | 2 | 3 | 4;
 
 export default function Chat() {
   const flatListRef = useRef<FlatList<ChatMessage>>(null);
@@ -70,7 +87,7 @@ export default function Chat() {
   const [savingRate, setSavingRate] = useState<string | null>(null);
   const [interest, setInterest] = useState<string | null>(null);
 
-  /* 메시지 */
+  /* 채팅 메시지 */
   const initialGreeting: ChatMessage = {
     id: 'greet',
     type: 'ai',
@@ -78,7 +95,6 @@ export default function Chat() {
       '안녕하세요! 돈 관리가 어려우셨다고요?\n잘오셨어요!\n\n저와 함께 소비성향을 파악하고 그에 맞는 투자 상품을 찾아보아요!\n\n소비성향 진단은 5문항으로 구성되어 있으며, 약 3분 정도 소요됩니다.\n\n진단을 시작해볼까요?',
     options: ['소비성향 진단받기'],
   };
-
   const [chat, setChat] = useState<ChatMessage[]>([initialGreeting]);
 
   /* ---------- Helpers ---------- */
@@ -117,10 +133,7 @@ export default function Chat() {
   const softRestartToSurvey = () => {
     resetSurveyState();
     resetRecommendState();
-    pushAI(
-      '다시 처음부터 시작해볼게요. 소비성향 진단을 진행할까요?',
-      ['소비성향 진단받기']
-    );
+    pushAI('다시 처음부터 시작해볼게요. 소비성향 진단을 진행할까요?', ['소비성향 진단받기']);
   };
 
   /* ---------- API Calls ---------- */
@@ -134,13 +147,13 @@ export default function Chat() {
       return false;
     }
   };
+
   const submitSurvey = async () => {
     try {
       const data = await apiFetch('/recommend/survey', {
         method: 'POST',
         body: JSON.stringify({ answers }),
       });
-
       return data as {
         personalityType: string;
         totalScore: number;
@@ -151,31 +164,33 @@ export default function Chat() {
       return null;
     }
   };
+
   const submitAiReport = async (i: string, s: string, it: string) => {
     try {
-      const res = await apiFetch('/recommend/ai-report', {
+      const result = await apiFetch('/recommend/ai-report', {
         method: 'POST',
         body: JSON.stringify({ income: i, savingRate: s, interest: it }),
       });
 
-      // 이 API는 text 응답이라 json 대신 text()로 처리
-      if (typeof res === 'string') return res; // 이미 text일 경우
-      return JSON.stringify(res);
+      if (typeof result === 'string') return result;
+      if (result && typeof result.message === 'string') return result.message;
+      return 'AI 추천 결과를 불러오지 못했어요.';
     } catch (e) {
+      console.error('AI report error:', e);
       pushAI('추천 리포트를 불러오지 못했어요.');
       return null;
     }
   };
-  /* ---------- 설문 처음 질문 띄우기 ---------- */
+
+  /* ---------- 첫 질문 표시 ---------- */
   useEffect(() => {
     if (questions.length > 0 && qIndex === 0) {
       const q = questions[0];
       pushAI(q.question, [q.option1, q.option2, q.option3, q.option4, q.option5]);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [questions, qIndex]);
 
-  /* ---------- 추천 단계 제어 (순차 질문) ---------- */
+  /* ---------- 추천 단계 ---------- */
   const startRecommendFlow = () => {
     resetRecommendState();
     setRecStep(1);
@@ -184,40 +199,29 @@ export default function Chat() {
 
   const proceedRecommend = async (picked: string) => {
     if (recStep === 1 && INCOME_OPTS.includes(picked)) {
-      const nextIncome = picked;
-      setIncome(nextIncome);
+      setIncome(picked);
       setRecStep(2);
       pushAI('저축률을 선택해주세요.', [...SAVING_OPTS]);
       return;
     }
 
     if (recStep === 2 && SAVING_OPTS.includes(picked)) {
-      const nextSaving = picked;
-      setSavingRate(nextSaving);
+      setSavingRate(picked);
       setRecStep(3);
       pushAI('관심 분야를 선택해주세요.', [...INTEREST_OPTS]);
       return;
     }
 
     if (recStep === 3 && INTEREST_OPTS.includes(picked)) {
-      const nextInterest = picked;
-      setInterest(nextInterest);
-
-      // 현 시점의 최신 선택값으로 바로 호출
+      setInterest(picked);
       setRecStep(4);
       pushAI('생각중...');
 
-      const i = income ?? '';       // 이전 단계에서 이미 세팅됨
-      const s = savingRate ?? '';   // 이전 단계에서 이미 세팅됨
-      const it = nextInterest;
-
-      const text = await submitAiReport(i, s, it);
+      const text = await submitAiReport(income ?? '', savingRate ?? '', picked);
       if (text) pushAI(text);
 
-      // 상담 옵션 노출
       pushAI('추가 상담을 원하시나요?', ['재진단하기', '처음으로']);
       setRecStep(0);
-      return;
     }
   };
 
@@ -226,7 +230,6 @@ export default function Chat() {
     hideLastOptions();
     pushUser(opt);
 
-    // 처음 설문 시작
     if (opt === '소비성향 진단받기') {
       resetSurveyState();
       const ok = await fetchQuestions();
@@ -234,7 +237,6 @@ export default function Chat() {
       return;
     }
 
-    // 설문 응답 진행
     if (qIndex >= 0 && qIndex < questions.length) {
       const cur = questions[qIndex];
       const score = [cur.option1, cur.option2, cur.option3, cur.option4, cur.option5].indexOf(opt) + 1;
@@ -246,7 +248,6 @@ export default function Chat() {
         const nq = questions[next];
         pushAI(nq.question, [nq.option1, nq.option2, nq.option3, nq.option4, nq.option5]);
       } else {
-        // 설문 완료
         setQIndex(-1);
         pushAI('분석중...');
         const result = await submitSurvey();
@@ -257,19 +258,16 @@ export default function Chat() {
       return;
     }
 
-    // 추천 시작
     if (opt === '추천받기' || opt === '재진단하기') {
       startRecommendFlow();
       return;
     }
 
-    // 완전 처음으로 (대화는 남기고 흐름만 리셋)
     if (opt === '처음으로') {
       softRestartToSurvey();
       return;
     }
 
-    // 추천 단계 진행
     if (recStep > 0) {
       await proceedRecommend(opt);
       return;
@@ -290,22 +288,21 @@ export default function Chat() {
   };
 
   return (
-  <SafeAreaView style={styles.container} edges={['bottom', 'left', 'right']}>
-    <View style={styles.header}>
-      <Text style={styles.headerTitle}>진료실</Text>
-    </View>
+    <SafeAreaView style={styles.container} edges={['bottom', 'left', 'right']}>
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>진료실</Text>
+      </View>
 
-    <FlatList
-      ref={flatListRef}
-      data={chat}
-      renderItem={renderItem}
-      keyExtractor={item => item.id}
-      contentContainerStyle={styles.chatListContent}
-      showsVerticalScrollIndicator={false}
-    />
-  </SafeAreaView>
-);
-
+      <FlatList
+        ref={flatListRef}
+        data={chat}
+        renderItem={renderItem}
+        keyExtractor={item => item.id}
+        contentContainerStyle={styles.chatListContent}
+        showsVerticalScrollIndicator={false}
+      />
+    </SafeAreaView>
+  );
 }
 
 /* ---------- UI ---------- */
@@ -356,8 +353,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#edf9ff',
   },
-
-  /* Header */
   header: {
     height: HEADER_HEIGHT,
     borderBottomWidth: 1,
@@ -371,15 +366,11 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '900',
   },
-
-  /* FlatList padding 전체 구조 개선 */
   chatListContent: {
     paddingHorizontal: 15,
-    paddingTop: HEADER_HEIGHT + 10, //타이틀 아래에서 시작
-    paddingBottom: 100, //하단 탭과 간격 확보
+    paddingTop: HEADER_HEIGHT + 10,
+    paddingBottom: 100,
   },
-
-  /* AI Bubble */
   aiMessageRow: {
     flexDirection: 'row',
     marginBottom: 14,
@@ -394,7 +385,6 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   aiText: { fontSize: 15 },
-
   profileShadow: {
     width: 40,
     height: 40,
@@ -407,8 +397,6 @@ const styles = StyleSheet.create({
     }),
   },
   profileImage: { width: 40, height: 40, borderRadius: 20 },
-
-  /* User Bubble */
   userMessageRow: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
@@ -426,8 +414,6 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: '700',
   },
-
-  /* Options */
   optionsColumn: {
     marginTop: 6,
     alignSelf: 'stretch',
