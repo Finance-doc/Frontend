@@ -1,5 +1,5 @@
-import GroupBarChart from '@/components/GroupBarChart';
-import { Colors } from '@/constants/colors';
+import GroupBarChart from '../../components/GroupBarChart';
+import { Colors } from '../../constants/colors';
 import * as SecureStore from 'expo-secure-store';
 import React, { useEffect, useState } from 'react';
 import { Dimensions, Image, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';

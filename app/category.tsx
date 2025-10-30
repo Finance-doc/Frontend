@@ -1,5 +1,5 @@
 //category.tsx
-import { Colors } from '@/constants/colors';
+import { Colors } from '../constants/colors';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';

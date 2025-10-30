@@ -1,15 +1,15 @@
-import { Colors } from '@/constants/colors';
+import { Colors } from '../constants/colors';
 import React from 'react';
 import { Image, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-// const ICON_PROFILE = require('@/assets/images/ic_profile.png');
+// const ICON_PROFILE = require('../assets/images/ic_profile.png');
 
 export default function Header() {
   return (
     <SafeAreaView edges={['top']} style={styles.safe}>
       <View style={styles.bar}>
-        <Image source={require('@/assets/images/text_logo_name.png')} style={styles.logo_name} />
+        <Image source={require('../assets/images/text_logo_name.png')} style={styles.logo_name} />
         {/* <TouchableOpacity style={styles.profileBtn} onPress={() => { }}>
           <Image source={ICON_PROFILE} style={styles.profileIcon} resizeMode="contain" />
         </TouchableOpacity> */}

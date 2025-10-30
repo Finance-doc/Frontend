@@ -1,4 +1,4 @@
-import Header from '@/components/header';
+import Header from '../../components/header';
 import { Tabs } from 'expo-router';
 import React from 'react';
 import { Image, View } from 'react-native';

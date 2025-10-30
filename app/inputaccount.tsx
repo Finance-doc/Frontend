@@ -1,9 +1,9 @@
-import { Colors } from '@/constants/colors';
 import { useRouter } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import React, { useState } from 'react';
 import { ActivityIndicator, Alert, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Colors } from '../constants/colors';
 
 const API_BASE_URL = 'http://ing-default-financedocin-b81cf-108864784-1b9b414f3253.kr.lb.naverncp.com';
 
@@ -53,7 +53,13 @@ export default function InputAccount() {
       router.replace('/(tabs)/home');
     } catch (err) {
       console.error('로그인 요청 중 오류:', err);
-      Alert.alert('네트워크 오류', '서버와의 연결에 실패했습니다.');
+      const message =
+        err instanceof Error
+          ? err.message
+          : typeof err === 'string'
+            ? err
+            : JSON.stringify(err);
+      Alert.alert('네트워크 오류', message);
     } finally {
       setLoading(false);
     }

@@ -1,4 +1,4 @@
-import { Colors } from '@/constants/colors';
+import { Colors } from '../constants/colors';
 import * as AuthSession from 'expo-auth-session';
 import { useAuthRequest } from 'expo-auth-session';
 import { useRouter } from 'expo-router';

@@ -1,8 +1,8 @@
-import { Colors } from '@/constants/colors';
 import * as SecureStore from 'expo-secure-store';
 import React, { useEffect, useState } from "react";
-import { Dimensions, Image, Linking, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Dimensions, Image, Linking, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { Colors } from '../../constants/colors';
 
 const { width } = Dimensions.get("window");
 
@@ -93,14 +93,15 @@ export default function Content() {
     return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
         <Text style={styles.title}>용어 구급 상자</Text>
+        <ScrollView>
           <Image
-            source={require("@/assets/images/bg_content_word.png")}
+            source={require("../../assets/images/bg_content_word.png")}
             style={styles.content}
           />
           {/* 카드 */}
           <View style={styles.cardContainer}>
             <Image
-              source={require("@/assets/images/img_edu_card.png")}
+              source={require("../../assets/images/img_edu_card.png")}
               style={styles.cardBackground}
               resizeMode="contain"
             />
@@ -113,25 +114,26 @@ export default function Content() {
             </View>
           </View>
           <Image
-            source={require("@/assets/images/img_doctor_content.png")}
+            source={require("../../assets/images/img_doctor_content.png")}
             style={styles.imagedoctor}
             resizeMode="contain"
           />
           {/* 버튼 */}
           <TouchableOpacity onPress={fetchKeyword}>
             <Image
-              source={require("@/assets/images/img_edu_btn_next.png")}
+              source={require("../../assets/images/img_edu_btn_next.png")}
               style={styles.nextBtn}
               resizeMode="contain"
             />
           </TouchableOpacity>
           <TouchableOpacity onPress={fetchQuiz}>
             <Image
-              source={require("@/assets/images/img_edu_btn_quiz.png")}
+              source={require("../../assets/images/img_edu_btn_quiz.png")}
               style={styles.quizBtn}
               resizeMode="contain"
           />
         </TouchableOpacity>
+        </ScrollView>
       </SafeAreaView>
     );
 
@@ -142,14 +144,15 @@ export default function Content() {
     return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
       <Text style={styles.title}>용어 구급 상자</Text>
+      <ScrollView>
         <Image
-          source={require("@/assets/images/bg_content_quiz.png")}
+          source={require("../../assets/images/bg_content_quiz.png")}
           style={styles.content}
         />
         {/* 카드 */}
         <View style={styles.cardContainer}>
           <Image
-            source={require("@/assets/images/img_edu_card.png")}
+            source={require("../../assets/images/img_edu_card.png")}
             style={styles.cardBackground}
             resizeMode="contain"
           />
@@ -201,6 +204,7 @@ export default function Content() {
             </Text>
             </View>
           </TouchableOpacity>
+          </ScrollView>
       </SafeAreaView>
     );
   }
@@ -210,13 +214,14 @@ export default function Content() {
     return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
       <Text style={styles.title}>용어 구급 상자</Text>
+      <ScrollView>
         <Image
-          source={require("@/assets/images/bg_content_word.png")}
+          source={require("../../assets/images/bg_content_word.png")}
           style={styles.content}
         />
         <View style={styles.cardContainer}>
           <Image
-            source={require("@/assets/images/img_edu_card.png")}
+            source={require("../../assets/images/img_edu_card.png")}
             style={styles.cardBackground}
             resizeMode="contain"
           />
@@ -233,7 +238,7 @@ export default function Content() {
         </View>
       </View>
       <Image
-        source={require("@/assets/images/img_doctor_result.png")}
+        source={require("../../assets/images/img_doctor_result.png")}
         style={styles.imagedoctor}
         resizeMode="contain"
       />
@@ -248,6 +253,7 @@ export default function Content() {
       >        
       <Text style={styles.next}>다시하기</Text>
       </TouchableOpacity>
+      </ScrollView>
     </SafeAreaView>
     );
 

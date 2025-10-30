@@ -1,4 +1,4 @@
-import { Colors } from '@/constants/colors';
+import { Colors } from '../../constants/colors';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as SecureStore from 'expo-secure-store';
 import React, { useEffect, useRef, useState } from 'react';
@@ -319,7 +319,7 @@ const OptionsRow = ({ options, onPress }: { options: string[]; onPress: (o: stri
 const AIMessage = ({ message }: { message: ChatMessage }) => (
   <View style={styles.aiMessageRow}>
     <View style={styles.profileShadow}>
-      <Image source={require('@/assets/images/img_doctor_profile.png')} style={styles.profileImage} />
+      <Image source={require('../../assets/images/img_doctor_profile.png')} style={styles.profileImage} />
     </View>
     <View style={styles.aiBubbleContainer}>
       <Text style={styles.aiName}>꼬꼬쌤</Text>

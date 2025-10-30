@@ -1,5 +1,5 @@
-import DayCell from '@/components/DayCell';
-import { Colors } from '@/constants/colors';
+import DayCell from '../../components/DayCell';
+import { Colors } from '../../constants/colors';
 import { useFocusEffect } from '@react-navigation/native';
 import * as d3 from "d3-shape";
 import { useRouter } from 'expo-router';
