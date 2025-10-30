@@ -1,6 +1,7 @@
 import GroupBarChart from '@/components/GroupBarChart';
 import { Colors } from '@/constants/colors';
-import * as SecureStore from 'expo-secure-store';
+// import * as SecureStore from 'expo-secure-store';
+import { getItem } from '@/hooks/storage';
 import React, { useEffect, useState } from 'react';
 import { Dimensions, Image, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { LineChart } from 'react-native-gifted-charts';
@@ -16,7 +17,7 @@ const IMG_ARROW_RIGHT_CHOSEN = require('../../assets/images/ic_arrow_right_choos
 
 const apiFetch = async (endpoint: string, options: RequestInit = {}) => {
   try {
-    const token = await SecureStore.getItemAsync('accessToken');
+    const token = await getItem("accessToken");
     const headers = {
       'Content-Type': 'application/json',
       ...(token ? { Authorization: `Bearer ${token}` } : {}),

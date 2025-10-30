@@ -3,7 +3,8 @@ import { Colors } from '@/constants/colors';
 import { useFocusEffect } from '@react-navigation/native';
 import * as d3 from "d3-shape";
 import { useRouter } from 'expo-router';
-import * as SecureStore from 'expo-secure-store';
+// import * as SecureStore from 'expo-secure-store';
+import { getItem } from '@/hooks/storage';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, Dimensions, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Calendar, LocaleConfig } from 'react-native-calendars';
@@ -13,7 +14,7 @@ import Svg, { G, Line, Path, Text as SvgText } from "react-native-svg";
 const API_BASE_URL = 'http://ing-default-financedocin-b81cf-108864784-1b9b414f3253.kr.lb.naverncp.com';
 const apiFetch = async (endpoint: string, options: RequestInit = {}) => {
   try {
-    const token = await SecureStore.getItemAsync("accessToken");
+    const token = await getItem("accessToken");
 
     const headers = {
       "Content-Type": "application/json",

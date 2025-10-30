@@ -1,7 +1,9 @@
 import { Colors } from '@/constants/colors';
-import * as SecureStore from 'expo-secure-store';
+import { getItem } from '@/hooks/storage';
+// import * as SecureStore from 'expo-secure-store';
 import React, { useEffect, useState } from "react";
-import { Dimensions, Image, Linking, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Dimensions, Image, Linking, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+// import { ScrollView } from 'react-native-reanimated/lib/typescript/Animated';
 import { SafeAreaView } from "react-native-safe-area-context";
 
 const { width } = Dimensions.get("window");
@@ -19,7 +21,7 @@ interface QuizItem {
 }
 const apiFetch = async (endpoint: string, options: RequestInit = {}) => {
   try {
-    const token = await SecureStore.getItemAsync("accessToken");
+     const token = await getItem("accessToken");
 
     const headers = {
       "Content-Type": "application/json",
@@ -210,6 +212,7 @@ export default function Content() {
     return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
       <Text style={styles.title}>용어 구급 상자</Text>
+      <ScrollView>
         <Image
           source={require("@/assets/images/bg_content_word.png")}
           style={styles.content}
@@ -248,6 +251,7 @@ export default function Content() {
       >        
       <Text style={styles.next}>다시하기</Text>
       </TouchableOpacity>
+      </ScrollView>
     </SafeAreaView>
     );
 

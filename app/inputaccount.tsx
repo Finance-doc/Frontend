@@ -1,6 +1,7 @@
 import { Colors } from '@/constants/colors';
 import { useRouter } from 'expo-router';
-import * as SecureStore from 'expo-secure-store';
+// import * as SecureStore from 'expo-secure-store';
+import { setItem } from '@/hooks/storage';
 import React, { useState } from 'react';
 import { ActivityIndicator, Alert, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -43,9 +44,9 @@ export default function InputAccount() {
       // (원하면 SecureStore 또는 AsyncStorage에 저장 가능)
       const { accessToken, refreshToken, user } = data;
 
-      await SecureStore.setItemAsync('accessToken', accessToken);
-      await SecureStore.setItemAsync('refreshToken', refreshToken);
-      await SecureStore.setItemAsync('nickname', user.nickname);
+      await setItem('accessToken', accessToken);
+      await setItem('refreshToken', refreshToken);
+      await setItem('nickname', user.nickname);
       Alert.alert('로그인 성공', `${user.nickname}님 환영합니다!`);
       console.log('AccessToken:', accessToken);
       console.log('RefreshToken:', refreshToken);

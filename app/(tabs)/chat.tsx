@@ -1,10 +1,10 @@
 import { Colors } from '@/constants/colors';
 import { LinearGradient } from 'expo-linear-gradient';
-import * as SecureStore from 'expo-secure-store';
+// import * as SecureStore from 'expo-secure-store';
+import { getItem } from '@/hooks/storage';
 import React, { useEffect, useRef, useState } from 'react';
 import { FlatList, Image, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-
 /* ---------- Types ---------- */
 type ChatMessage = {
   id: string;
@@ -35,7 +35,7 @@ const API_BASE_URL =
  */
 const apiFetch = async (endpoint: string, options: RequestInit = {}) => {
   try {
-    const token = await SecureStore.getItemAsync('accessToken');
+    const token = await getItem("accessToken");
     if (!token) console.warn('⚠️ No access token found in SecureStore');
 
     const headers = {
